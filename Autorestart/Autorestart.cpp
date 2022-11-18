@@ -22,12 +22,12 @@
 #pragma warning(disable : 4996)
 
 int RestartTime = 0;
-void Autorestart::unlockRoblox()
+void Autorestart::UnlockRoblox()
 {
 	CreateMutex(NULL, TRUE, "ROBLOX_singletonMutex");
 }
 
-bool Autorestart::findRoblox()
+bool Autorestart::FindRoblox()
 {
 	PROCESSENTRY32 entry;
 	entry.dwSize = sizeof(PROCESSENTRY32);
@@ -53,11 +53,11 @@ bool Autorestart::findRoblox()
 	return false;
 }
 
-void Autorestart::killRoblox()
+void Autorestart::KillRoblox()
 {
 	clear();
 	Log("Killing Roblox", "AutoRestart", true);
-	bool found = Autorestart::findRoblox() ? true : false;
+	bool found = Autorestart::FindRoblox() ? true : false;
 	if (found)
 	{
 		HANDLE hSnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPALL, NULL);
@@ -93,7 +93,7 @@ void Autorestart::_sleep(int miliseconds)
 	std::this_thread::sleep_for(std::chrono::milliseconds(miliseconds));
 }
 
-bool Autorestart::validateCookie()
+bool Autorestart::ValidateCookies()
 {
 	clear();
 	Log("Validating cookies...", "AutoRestart", true);
@@ -156,7 +156,7 @@ bool Autorestart::validateCookie()
 	return true;
 }
 
-void Autorestart::start(bool forceminimize)
+void Autorestart::Start(bool forceminimize)
 {
 	Log("How many minutes before restarting? ", "AutoRestart");
 	std::cin >> RestartTime;
@@ -246,7 +246,7 @@ void Autorestart::start(bool forceminimize)
 		error:
 		for (int i = 0; i < cookies.size(); i++)
 		{
-			unlockRoblox();
+			UnlockRoblox();
 
 			std::string authticket = getRobloxTicket(cookies.at(i));
 
@@ -254,12 +254,12 @@ void Autorestart::start(bool forceminimize)
 
 			char value[255];
 			DWORD BufferSize = 8192;
-			RegGetValue(HKEY_CURRENT_USER, "roblox-player\\shell\\open\\command", "", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+			RegGetValue(HKEY_CLASSES_ROOT, "roblox-player\\shell\\open\\command", "", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
 
 			path = value;
 
 			path = path.substr(1, path.length() - 5);
-
+			
 			srand((unsigned int)time(NULL));
 
 			std::string randomnumber = std::to_string(rand() % 100000 + 100000);
@@ -330,7 +330,7 @@ void Autorestart::start(bool forceminimize)
 					SendMessage(hWnd, WM_CLOSE, 0, 0);
 				}
 
-				killRoblox();
+				KillRoblox();
 				_usleep(5000);
 				goto error;
 			}
@@ -340,7 +340,7 @@ void Autorestart::start(bool forceminimize)
 			_usleep(5000);
 		}
 		
-		killRoblox();
+		KillRoblox();
 		_sleep(5000);
 	}
 }

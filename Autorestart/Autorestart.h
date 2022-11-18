@@ -6,14 +6,14 @@
 class Autorestart
 {
 public:
-	void start(bool);
-	void unlockRoblox();
-	void killRoblox();
+	void Start(bool);
+	void UnlockRoblox();
+	void KillRoblox();
 	void _usleep(int microseconds);
 	void _sleep(int miliseconds);
 	
-	bool validateCookie();
-	bool findRoblox();
+	bool ValidateCookies();
+	bool FindRoblox();
 
 private:
 	std::vector<PROCESS_INFORMATION> robloxProcesses;

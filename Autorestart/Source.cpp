@@ -75,11 +75,9 @@ int main(int argc, char* argv[])
 		CreateCookies();
 	}
 	
-	Autorestart autorestart;
-
-	if (autorestart.validateCookie())
+	if (Autorestart().ValidateCookies())
 	{
-		autorestart.start(forceminimize);
+		Autorestart().Start(forceminimize);
 	}
 	else
 	{
