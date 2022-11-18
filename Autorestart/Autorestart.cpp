@@ -97,16 +97,6 @@ bool Autorestart::validateCookie()
 {
 	clear();
 	Log("Validating cookies...", "AutoRestart", true);
-	
-	if (!std::filesystem::exists("cookies.txt"))
-	{
-		Log("Cookies.txt not found, creating it", "AutoRestart", true);
-		std::ofstream file("cookies.txt");
-		file << "";
-		file.close();
-		wait();
-		return false;
-	}
 
 	std::ifstream file("cookies.txt");
 	if (file.peek() == std::ifstream::traits_type::eof())
@@ -176,7 +166,6 @@ void Autorestart::start(bool forceminimize)
 	std::ifstream infile;
 	infile.open("cookies.txt");
 
-	// parse each line into a string vector
 	std::vector<std::string> cookies;
 	std::string line;
 	while (std::getline(infile, line))
@@ -212,9 +201,7 @@ void Autorestart::start(bool forceminimize)
 					break;
 				}
 			}
-
 		}
-
 
 		std::string _placeid = placeid.substr(placeid.find(":") + 1);
 		std::string _vipurl = vipurl.substr(vipurl.find(":") + 1);
@@ -267,7 +254,7 @@ void Autorestart::start(bool forceminimize)
 
 			char value[255];
 			DWORD BufferSize = 8192;
-			RegGetValue(HKEY_CLASSES_ROOT, "roblox-player\\shell\\open\\command", "", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+			RegGetValue(HKEY_CURRENT_USER, "roblox-player\\shell\\open\\command", "", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
 
 			path = value;
 

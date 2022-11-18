@@ -27,19 +27,17 @@
 #pragma comment (lib, "advapi32.lib")
 #pragma comment (lib, "User32.lib")
 
-bool val_func(const fs::directory_entry& entry);
 void createcfg();
-std::vector<std::string> get_drives();
-
+void CreateCookies();
 
 int main(int argc, char* argv[])
 {
 	SetConsoleTitle("Roblox Autorestart");
 
 	//-- Read launch arguments
-	bool ontop = 1;
-	bool windowsize = 1;
-	bool forceminimize = 0;
+	bool ontop = true;
+	bool windowsize = true;
+	bool forceminimize = false;
 	if (argc > 1)
 	{
 		for (int i = 0; i < argc; i++)
@@ -65,17 +63,16 @@ int main(int argc, char* argv[])
 		SetWindowLong(GetConsoleWindow(), GWL_STYLE, GetWindowLong(GetConsoleWindow(), GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 	}
 
-	//-- Get current username 
-	char username[UNLEN + 1];
-	DWORD username_len = UNLEN + 1;
-	GetUserName(username, &username_len);
-	std::string username_str = username;
-
-
-	//check if config.ini exists
+	//-- check if config.ini exists
 	if (!fs::exists("config.ini"))
 	{
 		createcfg();
+	}
+
+	//-- check if cookies.txt exists
+	if (!fs::exists("cookies.txt"))
+	{
+		CreateCookies();
 	}
 	
 	Autorestart autorestart;
@@ -92,49 +89,18 @@ int main(int argc, char* argv[])
 	}
 }
 
-bool val_func(const fs::directory_entry& entry)
+void CreateCookies()
 {
-	//-- check for a valid workspace folder
-	if (entry.path().filename() == "workspace")
-	{
-		for (auto& file : fs::directory_iterator(entry.path().parent_path()))
-		{
-			if (file.is_directory())
-			{
-				if (file.path().filename() == "autoexec")
-				{
-					return true;
-				}
-			}
-		}
-	}
-	return false;
+	std::ofstream file("cookies.txt");
+	file << "";
+	file.close();
 }
 
 void createcfg()
 {
-	//-- create config.ini
-	
 	std::ofstream config;
 	config.open("config.ini");
 	config << "placeid:";
 	config << "\nvip:";
 	config.close();
-}
-
-std::vector<std::string> get_drives()
-{
-	std::vector<std::string> drives;
-	char drive_buffer[100];
-	DWORD result = GetLogicalDriveStringsA(sizeof(drive_buffer), drive_buffer);
-	if (result != 0)
-	{
-		char* drive_letter = drive_buffer;
-		while (*drive_letter)
-		{
-			drives.push_back(drive_letter);
-			drive_letter += strlen(drive_letter) + 1;
-		}
-	}
-	return drives;
 }
