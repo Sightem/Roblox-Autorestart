@@ -218,7 +218,7 @@ void Autorestart::RobloxProcessWatcher()
 			break;
 		}
 		
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		Autorestart::_sleep(1000);
 	}
 }
 
@@ -387,9 +387,10 @@ void Autorestart::Start(bool forceminimize)
 			FillConsoleOutputCharacter(hOut, ' ', 80 * 25, coord, &dwCharsWritten);
 			SetConsoleCursorPosition(hOut, coord);
 			
-			if (FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
+			if (FindWindow(NULL, "Athentication Failed") || FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
 			{ 
-				HWND hWnd = FindWindow(NULL, "Synapse X - Crash Reporter");
+				HWND hWnd = FindWindow(NULL, "Athentication Failed");
+				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Synapse X - Crash Reporter");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "ROBLOX Crash");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Roblox Crash");
 				if (hWnd != NULL)				SendMessage(hWnd, WM_CLOSE, 0, 0);
