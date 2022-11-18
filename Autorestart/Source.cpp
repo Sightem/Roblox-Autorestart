@@ -75,6 +75,7 @@ int main(int argc, char* argv[])
 		CreateCookies();
 	}
 	
+	
 	if (Autorestart().ValidateCookies())
 	{
 		Autorestart().Start(forceminimize);

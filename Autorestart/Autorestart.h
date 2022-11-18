@@ -11,6 +11,10 @@ public:
 	void KillRoblox();
 	void _usleep(int microseconds);
 	void _sleep(int miliseconds);
+	void RobloxProcessWatcher();
+
+	std::vector<HANDLE> GetRobloxProcesses();
+	std::vector<HANDLE> GetProcessesByImageName(const char* image_name, size_t limit, DWORD access);
 	
 	bool ValidateCookies();
 	bool FindRoblox();

@@ -1,16 +1,18 @@
 #define CURL_STATICLIB
 #include <iostream>
-#include <windows.h>
-#include <Tlhelp32.h>
 #include <chrono>
 #include <fstream>
-#include <tchar.h>
 #include <thread>
 #include <vector>
 #include <filesystem>
 #include <Lmcons.h>
 #include <regex>
+#include <thread>
+#include <atomic>
 #include <direct.h>
+#include <windows.h>
+#include <Tlhelp32.h>
+#include <tchar.h>
 
 //-- User libs
 #include "Autorestart.h"
@@ -20,6 +22,9 @@
 #include "Request.hpp"
 
 #pragma warning(disable : 4996)
+
+std::atomic<int> CookieCount = 0;
+std::atomic<bool> Error = false;
 
 int RestartTime = 0;
 void Autorestart::UnlockRoblox()
@@ -112,6 +117,7 @@ bool Autorestart::ValidateCookies()
 	{
 		cookies.push_back(line);
 	}
+	CookieCount.store(cookies.size());
 
 	for (auto& cookie : cookies)
 	{
@@ -156,6 +162,66 @@ bool Autorestart::ValidateCookies()
 	return true;
 }
 
+//https://github.com/axstin/rbxfpsunlocker/blob/bb955b028d2a803ec409a01c17bebda1038e54aa/Source/procutil.cpp#L10
+std::vector<HANDLE> Autorestart::GetProcessesByImageName(const char* image_name, size_t limit, DWORD access)
+{
+	std::vector<HANDLE> result;
+
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+	size_t count = 0;
+
+	if (Process32First(snapshot, &entry) == TRUE)
+	{
+		while (count < limit && Process32Next(snapshot, &entry) == TRUE)
+		{
+			if (_stricmp(entry.szExeFile, image_name) == 0)
+			{
+				if (HANDLE process = OpenProcess(access, FALSE, entry.th32ProcessID))
+				{
+					result.push_back(process);
+					count++;
+				}
+			}
+		}
+	}
+
+	CloseHandle(snapshot);
+	return result;
+}
+
+//https://github.com/axstin/rbxfpsunlocker/blob/bb955b028d2a803ec409a01c17bebda1038e54aa/Source/main.cpp#L20
+std::vector<HANDLE> Autorestart::GetRobloxProcesses()
+{
+	std::vector<HANDLE> result;
+
+	for (HANDLE handle : GetProcessesByImageName("RobloxPlayerBeta.exe", 1, PROCESS_ALL_ACCESS))
+	{
+		// Roblox has a security daemon process that runs under the same name as the client (as of 3/2/22 update). Don't unlock it.
+		BOOL debugged = FALSE;
+		CheckRemoteDebuggerPresent(handle, &debugged);
+		if (!debugged) result.emplace_back(handle);
+	}
+
+	return result;
+}
+
+void Autorestart::RobloxProcessWatcher()
+{
+	while (true)
+	{
+		if (GetRobloxProcesses().size() != CookieCount.load())
+		{
+			Error.store(true);
+			break;
+		}
+		
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	}
+}
+
 void Autorestart::Start(bool forceminimize)
 {
 	Log("How many minutes before restarting? ", "AutoRestart");
@@ -180,14 +246,12 @@ void Autorestart::Start(bool forceminimize)
 	while (true)
 	{
 		std::ifstream file("config.ini");
-		std::string workspace;
 		std::string placeid;
 		std::string vipurl;
 		if (file.is_open())
 		{
 			std::string text;
 			int line = 0;
-
 			while (getline(file, text))
 			{
 				line++;
@@ -255,9 +319,7 @@ void Autorestart::Start(bool forceminimize)
 			char value[255];
 			DWORD BufferSize = 8192;
 			RegGetValue(HKEY_CLASSES_ROOT, "roblox-player\\shell\\open\\command", "", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-
 			path = value;
-
 			path = path.substr(1, path.length() - 5);
 			
 			srand((unsigned int)time(NULL));
@@ -276,7 +338,6 @@ void Autorestart::Start(bool forceminimize)
 			{
 				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + _placeid + "%26isPlayTogetherGame%3Dfalse+" + "browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
 			}
-
 
 			STARTUPINFOA si = {};
 			si.cb = sizeof(si);
@@ -298,6 +359,9 @@ void Autorestart::Start(bool forceminimize)
 		HANDLE hOut;
 		COORD coord = { 0, 0 };
 		DWORD dwCharsWritten;
+
+		std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
+		
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
 			if (forceminimize && FindWindow(NULL, "Roblox"))
@@ -306,6 +370,15 @@ void Autorestart::Start(bool forceminimize)
 				{
 					ShowWindow(FindWindow(NULL, "Roblox"), SW_FORCEMINIMIZE);
 				}
+			}
+
+			if (Error)
+			{
+				Error.store(false); 
+				RobloxProcessWatcherThread.join();
+				KillRoblox();
+				_usleep(5000);
+				goto error;
 			}
 
 			std::string msg = "(" + std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() + 1) + " minutes)";
@@ -317,18 +390,9 @@ void Autorestart::Start(bool forceminimize)
 			if (FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
 			{ 
 				HWND hWnd = FindWindow(NULL, "Synapse X - Crash Reporter");
-				if (hWnd == NULL)
-				{
-					hWnd = FindWindow(NULL, "ROBLOX Crash");
-				}
-				if (hWnd == NULL)
-				{
-					hWnd = FindWindow(NULL, "Roblox Crash");
-				}
-				if (hWnd != NULL)
-				{
-					SendMessage(hWnd, WM_CLOSE, 0, 0);
-				}
+				if (hWnd == NULL)				hWnd = FindWindow(NULL, "ROBLOX Crash");
+				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Roblox Crash");
+				if (hWnd != NULL)				SendMessage(hWnd, WM_CLOSE, 0, 0);
 
 				KillRoblox();
 				_usleep(5000);
@@ -340,6 +404,7 @@ void Autorestart::Start(bool forceminimize)
 			_usleep(5000);
 		}
 		
+		RobloxProcessWatcherThread.join();
 		KillRoblox();
 		_sleep(5000);
 	}
