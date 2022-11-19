@@ -277,7 +277,7 @@ void Autorestart::Start(bool forceminimize)
 			return;
 		}
 
-		std::string LinkCode, accessCode;
+		std::string LinkCode, AccessCode;
 		if (!(_vipurl.empty()))
 		{
 			LinkCode = _vipurl.substr(_vipurl.find("=") + 1);
@@ -300,12 +300,10 @@ void Autorestart::Start(bool forceminimize)
 			std::regex regex("joinPrivateGame\\(\\d+\\, '(\\w+\\-\\w+\\-\\w+\\-\\w+\\-\\w+)");
 			std::smatch match;
 			std::regex_search(res2.data, match, regex);
-			accessCode = match[1];
+			AccessCode = match[1];
 
 			vip = true;
 		}
-		std::cout << LinkCode << std::endl;
-		std::cout << accessCode << std::endl;
 
 		error:
 		for (int i = 0; i < cookies.size(); i++)
@@ -332,7 +330,7 @@ void Autorestart::Start(bool forceminimize)
 			std::string cmd;
 			if (vip)
 			{
-				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + _placeid + "%26accessCode%3D" + accessCode + "%26linkCode%3D" + LinkCode + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
+				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + _placeid + "%26accessCode%3D" + AccessCode + "%26linkCode%3D" + LinkCode + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
 			}
 			else
 			{

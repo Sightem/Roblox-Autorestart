@@ -12,6 +12,7 @@
 #include "Terminal.h"
 #include "FolderSearch.h"
 #include "Logger.h"
+#include "json.hpp"
 
 //-- External libs
 #ifdef _DEBUG
@@ -27,8 +28,11 @@
 #pragma comment (lib, "advapi32.lib")
 #pragma comment (lib, "User32.lib")
 
-void createcfg();
+using json = nlohmann::json;
+
+void CreateConfig();
 void CreateCookies();
+void Compatibility();
 
 int main(int argc, char* argv[])
 {
@@ -38,6 +42,7 @@ int main(int argc, char* argv[])
 	bool ontop = true;
 	bool windowsize = true;
 	bool forceminimize = false;
+	bool compat = false;
 	if (argc > 1)
 	{
 		for (int i = 0; i < argc; i++)
@@ -47,6 +52,8 @@ int main(int argc, char* argv[])
 			if (strcmp(argv[i], "nolockwindowsize") == 0) { windowsize = 0; }
 
 			if (strcmp(argv[i], "minimize") == 0) { forceminimize = 1; }
+
+			if (strcmp(argv[i], "compat") == 0) { compat = 1; }
 		}
 	}
 
@@ -63,10 +70,15 @@ int main(int argc, char* argv[])
 		SetWindowLong(GetConsoleWindow(), GWL_STYLE, GetWindowLong(GetConsoleWindow(), GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 	}
 
+	if (compat)
+	{
+		Compatibility();
+	}
+
 	//-- check if config.ini exists
 	if (!fs::exists("config.ini"))
 	{
-		createcfg();
+		CreateConfig();
 	}
 
 	//-- check if cookies.txt exists
@@ -87,6 +99,52 @@ int main(int argc, char* argv[])
 	}
 }
 
+void Compatibility()
+{
+	if (std::filesystem::exists("AccountData.json"))
+	{
+		system("curl -LJOs https://github.com/Sightem/RAMDecrypt/releases/download/yes/Program.exe");
+
+		json data;
+		try
+		{
+			data = json::parse(std::ifstream("AccountData.json"));
+		}
+		catch (std::exception e)
+		{
+			system("Program.exe AccountData.json");
+			data = json::parse(std::ifstream("AccountData.json"));
+		}
+
+		if (std::filesystem::exists("cookies.txt"))
+		{
+			for (int i = 0; i < data.size(); i++)
+			{
+				std::ofstream file("cookies.txt", std::ios::app);
+				std::string str = data[i]["SecurityToken"];
+				str.erase(std::remove(str.begin(), str.end(), '\"'), str.end());
+				file << str << std::endl;
+			}
+		}
+		else
+		{
+			std::ofstream file("cookies.txt");
+			for (int i = 0; i < data.size(); i++)
+			{
+				std::string str = data[i]["SecurityToken"];
+				str.erase(std::remove(str.begin(), str.end(), '\"'), str.end());
+				file << str << std::endl;
+			}
+		}
+
+	}
+	else
+	{
+		std::cout << "AccountData.json not found, please place it in the same directory as this executable" << std::endl;
+		system("pause");
+	}
+}
+
 void CreateCookies()
 {
 	std::ofstream file("cookies.txt");
@@ -94,7 +152,7 @@ void CreateCookies()
 	file.close();
 }
 
-void createcfg()
+void CreateConfig()
 {
 	std::ofstream config;
 	config.open("config.ini");

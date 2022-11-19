@@ -142,6 +142,7 @@
   <ItemGroup>
     <ClInclude Include="Autorestart.h" />
     <ClInclude Include="FolderSearch.h" />
+    <ClInclude Include="json.hpp" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Request.hpp" />
     <ClInclude Include="Roblox.h" />
