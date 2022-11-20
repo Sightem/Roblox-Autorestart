@@ -25,6 +25,7 @@
 
 std::atomic<int> CookieCount = 0;
 std::atomic<bool> Error = false;
+std::atomic<bool> Signal = false;
 
 int RestartTime = 0;
 void Autorestart::UnlockRoblox()
@@ -197,12 +198,12 @@ std::vector<HANDLE> Autorestart::GetRobloxProcesses()
 {
 	std::vector<HANDLE> result;
 
-	for (HANDLE handle : GetProcessesByImageName("RobloxPlayerBeta.exe", 1, PROCESS_ALL_ACCESS))
+	for (HANDLE handle : GetProcessesByImageName("RobloxPlayerBeta.exe", 20, PROCESS_ALL_ACCESS))
 	{
 		// Roblox has a security daemon process that runs under the same name as the client (as of 3/2/22 update). Don't unlock it.
 		BOOL debugged = FALSE;
 		CheckRemoteDebuggerPresent(handle, &debugged);
-		if (!debugged) result.emplace_back(handle);
+		if (!debugged) result.push_back(handle);
 	}
 
 	return result;
@@ -210,6 +211,20 @@ std::vector<HANDLE> Autorestart::GetRobloxProcesses()
 
 void Autorestart::RobloxProcessWatcher()
 {
+	int tries = 0;
+	if (GetRobloxProcesses().size() != CookieCount.load())
+	{
+		while (tries < 30)
+		{
+			if (GetRobloxProcesses().size() == CookieCount.load())
+			{
+				break;
+			}
+			tries++;
+			Autorestart::_sleep(1000);
+		}
+	}
+	
 	while (true)
 	{
 		if (GetRobloxProcesses().size() != CookieCount.load())
@@ -217,9 +232,17 @@ void Autorestart::RobloxProcessWatcher()
 			Error.store(true);
 			break;
 		}
+
+		if (Signal.load())
+		{
+			Signal.store(false);
+			break;
+		}
 		
 		Autorestart::_sleep(1000);
 	}
+	
+	return;
 }
 
 void Autorestart::Start(bool forceminimize)
@@ -242,70 +265,69 @@ void Autorestart::Start(bool forceminimize)
 	std::ifstream configfile("config.ini");
 
 	bool vip = false;
+	
+	std::ifstream file("config.ini");
+	std::string placeid;
+	std::string vipurl;
+	if (file.is_open())
+	{
+		std::string text;
+		int line = 0;
+		while (getline(file, text))
+		{
+			line++;
+			switch (line)
+			{
+			case 1:
+				placeid = text;
+				break;
+			case 2:
+				vipurl = text;
+				break;
+			}
+		}
+	}
+
+	std::string _placeid = placeid.substr(placeid.find(":") + 1);
+	std::string _vipurl = vipurl.substr(vipurl.find(":") + 1);
+
+	if (_placeid.empty())
+	{
+		std::cout << "placeid is empty" << std::endl;
+		wait();
+		return;
+	}
+
+	std::string LinkCode, AccessCode;
+	if (!(_vipurl.empty()))
+	{
+		LinkCode = _vipurl.substr(_vipurl.find("=") + 1);
+
+		Request csrf("https://auth.roblox.com/v1/authentication-ticket");
+		csrf.set_cookie(".ROBLOSECURITY", cookies[0]);
+		csrf.set_header("Referer", "https://www.roblox.com/");
+		csrf.initalize();
+		Response res = csrf.post();
+
+		std::string csrfToken = res.headers["x-csrf-token"];
+
+		Request accesscode(_vipurl);
+		accesscode.set_cookie(".ROBLOSECURITY", cookies[0]);
+		accesscode.set_header("x-csrf-token", csrfToken);
+		accesscode.set_header("Referer", "https://www.roblox.com/");
+		accesscode.initalize();
+		Response res2 = accesscode.get();
+
+		std::regex regex("joinPrivateGame\\(\\d+\\, '(\\w+\\-\\w+\\-\\w+\\-\\w+\\-\\w+)");
+		std::smatch match;
+		std::regex_search(res2.data, match, regex);
+		AccessCode = match[1];
+
+		vip = true;
+	}
 
 	while (true)
 	{
-		std::ifstream file("config.ini");
-		std::string placeid;
-		std::string vipurl;
-		if (file.is_open())
-		{
-			std::string text;
-			int line = 0;
-			while (getline(file, text))
-			{
-				line++;
-				switch (line)
-				{
-				case 1:
-					placeid = text;
-					break;
-				case 2:
-					vipurl = text;
-					break;
-				}
-			}
-		}
-
-		std::string _placeid = placeid.substr(placeid.find(":") + 1);
-		std::string _vipurl = vipurl.substr(vipurl.find(":") + 1);
-
-		if (_placeid.empty())
-		{
-			std::cout << "placeid is empty" << std::endl;
-			wait();
-			return;
-		}
-
-		std::string LinkCode, AccessCode;
-		if (!(_vipurl.empty()))
-		{
-			LinkCode = _vipurl.substr(_vipurl.find("=") + 1);
-
-			Request csrf("https://auth.roblox.com/v1/authentication-ticket");
-			csrf.set_cookie(".ROBLOSECURITY", cookies[0]);
-			csrf.set_header("Referer", "https://www.roblox.com/");
-			csrf.initalize();
-			Response res = csrf.post();
-
-			std::string csrfToken = res.headers["x-csrf-token"];
-
-			Request accesscode(_vipurl);
-			accesscode.set_cookie(".ROBLOSECURITY", cookies[0]);
-			accesscode.set_header("x-csrf-token", csrfToken);
-			accesscode.set_header("Referer", "https://www.roblox.com/");
-			accesscode.initalize();
-			Response res2 = accesscode.get();
-
-			std::regex regex("joinPrivateGame\\(\\d+\\, '(\\w+\\-\\w+\\-\\w+\\-\\w+\\-\\w+)");
-			std::smatch match;
-			std::regex_search(res2.data, match, regex);
-			AccessCode = match[1];
-
-			vip = true;
-		}
-
-		error:
 		for (int i = 0; i < cookies.size(); i++)
 		{
 			UnlockRoblox();
@@ -319,7 +341,7 @@ void Autorestart::Start(bool forceminimize)
 			RegGetValue(HKEY_CLASSES_ROOT, "roblox-player\\shell\\open\\command", "", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
 			path = value;
 			path = path.substr(1, path.length() - 5);
-			
+
 			srand((unsigned int)time(NULL));
 
 			std::string randomnumber = std::to_string(rand() % 100000 + 100000);
@@ -353,13 +375,13 @@ void Autorestart::Start(bool forceminimize)
 		}
 
 		auto start = std::chrono::steady_clock::now();
-		
+
 		HANDLE hOut;
 		COORD coord = { 0, 0 };
 		DWORD dwCharsWritten;
 
 		std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
-		
+
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
 			if (forceminimize && FindWindow(NULL, "Roblox"))
@@ -371,40 +393,37 @@ void Autorestart::Start(bool forceminimize)
 			}
 
 			if (Error)
-			{
-				Error.store(false); 
-				RobloxProcessWatcherThread.join();
-				KillRoblox();
-				_usleep(5000);
-				goto error;
-			}
+				break;
 
 			std::string msg = "(" + std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() + 1) + " minutes)";
-			
+
 			hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 			FillConsoleOutputCharacter(hOut, ' ', 80 * 25, coord, &dwCharsWritten);
 			SetConsoleCursorPosition(hOut, coord);
-			
+
 			if (FindWindow(NULL, "Athentication Failed") || FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
-			{ 
+			{
 				HWND hWnd = FindWindow(NULL, "Athentication Failed");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Synapse X - Crash Reporter");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "ROBLOX Crash");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Roblox Crash");
 				if (hWnd != NULL)				SendMessage(hWnd, WM_CLOSE, 0, 0);
 
-				KillRoblox();
-				_usleep(5000);
-				goto error;
+				break;
 			}
 
 			Log(msg, "AutoRestart");
 
 			_usleep(5000);
 		}
-		
+		Signal.store(true);
+
 		RobloxProcessWatcherThread.join();
+
+		if (Error.load())
+			Error.store(false);
+
 		KillRoblox();
-		_sleep(5000);
+		_usleep(5000);
 	}
 }
