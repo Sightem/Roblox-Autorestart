@@ -25,7 +25,7 @@
 
 std::atomic<int> CookieCount = 0;
 std::atomic<bool> Error = false;
-std::atomic<bool> Signal = false;
+std::atomic<bool> Ready = false;
 
 int RestartTime = 0;
 void Autorestart::UnlockRoblox()
@@ -211,38 +211,37 @@ std::vector<HANDLE> Autorestart::GetRobloxProcesses()
 
 void Autorestart::RobloxProcessWatcher()
 {
-	int tries = 0;
-	if (GetRobloxProcesses().size() != CookieCount.load())
+	while (true)
 	{
-		while (tries < 30)
+		while (!Ready) 
 		{
-			if (GetRobloxProcesses().size() == CookieCount.load())
+			std::this_thread::yield();
+		}
+
+		int tries = 0;
+		if (GetRobloxProcesses().size() != CookieCount.load())
+		{
+			while (tries < 30)
 			{
+				if (GetRobloxProcesses().size() == CookieCount.load())
+				{
+					break;
+				}
+				tries++;
+				Autorestart::_sleep(1000);
+			}
+		}
+
+		while (true)
+		{
+			if (GetRobloxProcesses().size() != CookieCount.load())
+			{
+				Error.store(true);
 				break;
 			}
-			tries++;
 			Autorestart::_sleep(1000);
 		}
 	}
-	
-	while (true)
-	{
-		if (GetRobloxProcesses().size() != CookieCount.load())
-		{
-			Error.store(true);
-			break;
-		}
-
-		if (Signal.load())
-		{
-			Signal.store(false);
-			break;
-		}
-		
-		Autorestart::_sleep(1000);
-	}
-	
-	return;
 }
 
 void Autorestart::Start(bool forceminimize)
@@ -326,6 +325,9 @@ void Autorestart::Start(bool forceminimize)
 		vip = true;
 	}
 
+
+	std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
+
 	while (true)
 	{
 		for (int i = 0; i < cookies.size(); i++)
@@ -379,9 +381,8 @@ void Autorestart::Start(bool forceminimize)
 		HANDLE hOut;
 		COORD coord = { 0, 0 };
 		DWORD dwCharsWritten;
-
-		std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
-
+		
+		Ready.store(true);
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
 			if (forceminimize && FindWindow(NULL, "Roblox"))
@@ -393,7 +394,10 @@ void Autorestart::Start(bool forceminimize)
 			}
 
 			if (Error)
+			{
+				Error.store(false);
 				break;
+			}
 
 			std::string msg = "(" + std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() + 1) + " minutes)";
 
@@ -401,9 +405,9 @@ void Autorestart::Start(bool forceminimize)
 			FillConsoleOutputCharacter(hOut, ' ', 80 * 25, coord, &dwCharsWritten);
 			SetConsoleCursorPosition(hOut, coord);
 
-			if (FindWindow(NULL, "Athentication Failed") || FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
+			if (FindWindow(NULL, "Authentication Failed") || FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
 			{
-				HWND hWnd = FindWindow(NULL, "Athentication Failed");
+				HWND hWnd = FindWindow(NULL, "Authentication Failed");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Synapse X - Crash Reporter");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "ROBLOX Crash");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Roblox Crash");
@@ -416,14 +420,8 @@ void Autorestart::Start(bool forceminimize)
 
 			_usleep(5000);
 		}
-		Signal.store(true);
-
-		RobloxProcessWatcherThread.join();
-
-		if (Error.load())
-			Error.store(false);
-
+		Ready.store(false);
 		KillRoblox();
-		_usleep(5000);
+		_sleep(5000);
 	}
 }
