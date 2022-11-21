@@ -6,7 +6,7 @@
 class Autorestart
 {
 public:
-	void Start(bool);
+	void Start();
 	void UnlockRoblox();
 	void KillRoblox();
 	void _usleep(int microseconds);

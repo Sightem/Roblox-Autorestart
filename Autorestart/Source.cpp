@@ -29,6 +29,7 @@
 #pragma comment (lib, "User32.lib")
 
 using json = nlohmann::json;
+using ordered_json = nlohmann::ordered_json;
 
 void CreateConfig();
 void CreateCookies();
@@ -39,33 +40,53 @@ int main(int argc, char* argv[])
 	SetConsoleTitle("Roblox Autorestart");
 
 	//-- Read launch arguments
-	bool ontop = true;
-	bool windowsize = true;
-	bool forceminimize = false;
 	bool compat = false;
 	if (argc > 1)
 	{
 		for (int i = 0; i < argc; i++)
 		{
-			if (strcmp(argv[i], "notop") == 0) { ontop = 0; }
-
-			if (strcmp(argv[i], "nolockwindowsize") == 0) { windowsize = 0; }
-
-			if (strcmp(argv[i], "minimize") == 0) { forceminimize = 1; }
-
 			if (strcmp(argv[i], "compat") == 0) { compat = 1; }
 		}
 	}
 
-	//-- Always on top
-	if (ontop)
+	//-- check if config.ini exists
+	if (!fs::exists("AutoRestartConfig.json"))
+	{
+		std::cout << "Config file not found, creating" << std::endl;
+		CreateConfig();
+		std::cout << "Creation done please edit the config to your desire and re open the program" << std::endl;
+		wait();
+		return 1;
+	}
+
+	//-- check if cookies.txt exists
+	if (!fs::exists("cookies.txt"))
+	{
+		CreateCookies();
+	}
+
+	std::ifstream i("AutoRestartConfig.json");
+	json Config;
+
+	try
+	{
+		i >> Config;
+	}
+	catch (std::exception& e)
+	{
+		std::cout << "Error parsing config file: " << e.what() << std::endl;
+		wait();
+		return 1;
+	}
+	
+	if (Config["mostontop"])
 	{
 		::SetWindowPos(GetConsoleWindow(), HWND_TOPMOST, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
 		::ShowWindow(GetConsoleWindow(), SW_NORMAL);
 	}
 
 	//-- Window size lock
-	if (windowsize)
+	if (Config["resizablewindow"])
 	{
 		SetWindowLong(GetConsoleWindow(), GWL_STYLE, GetWindowLong(GetConsoleWindow(), GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 	}
@@ -75,21 +96,9 @@ int main(int argc, char* argv[])
 		Compatibility();
 	}
 
-	//-- check if config.ini exists
-	if (!fs::exists("config.ini"))
-	{
-		CreateConfig();
-	}
-
-	//-- check if cookies.txt exists
-	if (!fs::exists("cookies.txt"))
-	{
-		CreateCookies();
-	}
-	
 	if (Autorestart().ValidateCookies())
 	{
-		Autorestart().Start(forceminimize);
+		Autorestart().Start();
 	}
 	else
 	{
@@ -155,8 +164,29 @@ void CreateCookies()
 void CreateConfig()
 {
 	std::ofstream config;
-	config.open("config.ini");
-	config << "placeid:";
-	config << "\nvip:";
+	config.open("AutoRestartConfig.json");
+	
+	ordered_json data =
+	{
+		{"timer", 10},
+		{"placeid", 1},
+		{"mostontop", true},
+		{"forceminimize", false},
+		{"resizablewindow", false},
+		{"vip", {
+			{"enabled", false},
+			{"url", ""}
+			}
+		},
+		{"workspaceinteraction", {
+			{"enabled", false},
+			{"path", ""}
+			}
+		},
+		{"watchdog", true}
+	};
+	
+	config << data.dump(4);
+	
 	config.close();
 }

@@ -20,14 +20,15 @@
 #include "Terminal.h"
 #include "Logger.h"
 #include "Request.hpp"
+#include "json.hpp"
 
-#pragma warning(disable : 4996)
+using json = nlohmann::json;
+
 
 std::atomic<int> CookieCount = 0;
 std::atomic<bool> Error = false;
 std::atomic<bool> Ready = false;
 
-int RestartTime = 0;
 void Autorestart::UnlockRoblox()
 {
 	CreateMutex(NULL, TRUE, "ROBLOX_singletonMutex");
@@ -244,13 +245,15 @@ void Autorestart::RobloxProcessWatcher()
 	}
 }
 
-void Autorestart::Start(bool forceminimize)
+void Autorestart::Start()
 {
-	Log("How many minutes before restarting? ", "AutoRestart");
-	std::cin >> RestartTime;
+	//parse the config file
+	std::ifstream i("AutoRestartConfig.json");
+	json Config;
+	i >> Config;
 
-	clear();
-
+	int RestartTime = Config["timer"];
+	
 	std::ifstream infile;
 	infile.open("cookies.txt");
 
@@ -261,36 +264,13 @@ void Autorestart::Start(bool forceminimize)
 		cookies.push_back(line);
 	}
 
-	std::ifstream configfile("config.ini");
-
+	std::string placeid = Config["placeid"].dump();
+	std::string vipurl;
 	bool vip = false;
 	
-	std::ifstream file("config.ini");
-	std::string placeid;
-	std::string vipurl;
-	if (file.is_open())
-	{
-		std::string text;
-		int line = 0;
-		while (getline(file, text))
-		{
-			line++;
-			switch (line)
-			{
-			case 1:
-				placeid = text;
-				break;
-			case 2:
-				vipurl = text;
-				break;
-			}
-		}
-	}
+	if (Config["vip"]["enabled"]) vipurl = Config["vip"]["url"];
 
-	std::string _placeid = placeid.substr(placeid.find(":") + 1);
-	std::string _vipurl = vipurl.substr(vipurl.find(":") + 1);
-
-	if (_placeid.empty())
+	if (placeid.empty())
 	{
 		std::cout << "placeid is empty" << std::endl;
 		wait();
@@ -298,9 +278,9 @@ void Autorestart::Start(bool forceminimize)
 	}
 
 	std::string LinkCode, AccessCode;
-	if (!(_vipurl.empty()))
+	if (Config["vip"]["enabled"] && !vipurl.empty())
 	{
-		LinkCode = _vipurl.substr(_vipurl.find("=") + 1);
+		LinkCode = vipurl.substr(vipurl.find("=") + 1);
 
 		Request csrf("https://auth.roblox.com/v1/authentication-ticket");
 		csrf.set_cookie(".ROBLOSECURITY", cookies[0]);
@@ -310,7 +290,7 @@ void Autorestart::Start(bool forceminimize)
 
 		std::string csrfToken = res.headers["x-csrf-token"];
 
-		Request accesscode(_vipurl);
+		Request accesscode(vipurl);
 		accesscode.set_cookie(".ROBLOSECURITY", cookies[0]);
 		accesscode.set_header("x-csrf-token", csrfToken);
 		accesscode.set_header("Referer", "https://www.roblox.com/");
@@ -325,8 +305,8 @@ void Autorestart::Start(bool forceminimize)
 		vip = true;
 	}
 
-
-	std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
+	if (Config["watchdog"]) std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
+	//TODO: workspace interaction
 
 	while (true)
 	{
@@ -354,11 +334,11 @@ void Autorestart::Start(bool forceminimize)
 			std::string cmd;
 			if (vip)
 			{
-				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + _placeid + "%26accessCode%3D" + AccessCode + "%26linkCode%3D" + LinkCode + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
+				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + placeid + "%26accessCode%3D" + AccessCode + "%26linkCode%3D" + LinkCode + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
 			}
 			else
 			{
-				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + _placeid + "%26isPlayTogetherGame%3Dfalse+" + "browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
+				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + placeid + "%26isPlayTogetherGame%3Dfalse+" + "browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
 			}
 
 			STARTUPINFOA si = {};
@@ -385,7 +365,7 @@ void Autorestart::Start(bool forceminimize)
 		Ready.store(true);
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
-			if (forceminimize && FindWindow(NULL, "Roblox"))
+			if (Config["forceminimize"] && FindWindow(NULL, "Roblox"))
 			{
 				for (int i = 0; i < cookies.size(); i++)
 				{
