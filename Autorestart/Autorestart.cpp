@@ -219,7 +219,7 @@ void Autorestart::RobloxProcessWatcher()
 		}
 
 		int tries = 0;
-		if (GetRobloxProcesses().size() != CookieCount.load())
+		if (GetRobloxProcesses().size() < CookieCount.load())
 		{
 			while (tries < 30)
 			{
@@ -234,7 +234,7 @@ void Autorestart::RobloxProcessWatcher()
 
 		while (true)
 		{
-			if (GetRobloxProcesses().size() != CookieCount.load())
+			if (GetRobloxProcesses().size() < CookieCount.load() && Ready.load())
 			{
 				Error.store(true);
 				break;
@@ -421,7 +421,12 @@ void Autorestart::Start(bool forceminimize)
 			_usleep(5000);
 		}
 		Ready.store(false);
+		Error.store(false);
 		KillRoblox();
-		_sleep(5000);
+		
+		while (Autorestart::FindRoblox())
+		{
+			std::this_thread::yield();
+		}
 	}
 }
