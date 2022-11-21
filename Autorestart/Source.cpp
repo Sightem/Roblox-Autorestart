@@ -65,9 +65,9 @@ int main(int argc, char* argv[])
 		CreateCookies();
 	}
 
+	//-- Config parsing
 	std::ifstream i("AutoRestartConfig.json");
 	json Config;
-
 	try
 	{
 		i >> Config;
@@ -79,14 +79,15 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	
-	if (Config["mostontop"])
+	//-- Top Most
+	if (Config["TopMost"])
 	{
 		::SetWindowPos(GetConsoleWindow(), HWND_TOPMOST, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
 		::ShowWindow(GetConsoleWindow(), SW_NORMAL);
 	}
 
 	//-- Window size lock
-	if (Config["resizablewindow"])
+	if (Config["ResizableWindow"])
 	{
 		SetWindowLong(GetConsoleWindow(), GWL_STYLE, GetWindowLong(GetConsoleWindow(), GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 	}
@@ -168,22 +169,22 @@ void CreateConfig()
 	
 	ordered_json data =
 	{
-		{"timer", 10},
-		{"placeid", 1},
-		{"mostontop", true},
-		{"forceminimize", false},
-		{"resizablewindow", false},
+		{"Timer", 10},
+		{"PlaceID", 1},
+		{"TopMost", true},
+		{"ForceMinimize", false},
+		{"Resizablewindow", false},
 		{"vip", {
-			{"enabled", false},
+			{"Enabled", false},
 			{"url", ""}
 			}
 		},
 		{"workspaceinteraction", {
-			{"enabled", false},
-			{"path", ""}
+			{"Enabled", false},
+			{"Path", ""}
 			}
 		},
-		{"watchdog", true}
+		{"Watchdog", true}
 	};
 	
 	config << data.dump(4);

@@ -247,12 +247,11 @@ void Autorestart::RobloxProcessWatcher()
 
 void Autorestart::Start()
 {
-	//parse the config file
 	std::ifstream i("AutoRestartConfig.json");
 	json Config;
 	i >> Config;
 
-	int RestartTime = Config["timer"];
+	int RestartTime = Config["Timer"];
 	
 	std::ifstream infile;
 	infile.open("cookies.txt");
@@ -264,21 +263,21 @@ void Autorestart::Start()
 		cookies.push_back(line);
 	}
 
-	std::string placeid = Config["placeid"].dump();
+	std::string placeid = Config["PlaceID"].dump();
 	std::string vipurl;
 	bool vip = false;
 	
-	if (Config["vip"]["enabled"]) vipurl = Config["vip"]["url"];
+	if (Config["vip"]["Enabled"]) vipurl = Config["vip"]["url"];
 
 	if (placeid.empty())
 	{
-		std::cout << "placeid is empty" << std::endl;
+		std::cout << "PlaceID is empty" << std::endl;
 		wait();
 		return;
 	}
 
 	std::string LinkCode, AccessCode;
-	if (Config["vip"]["enabled"] && !vipurl.empty())
+	if (Config["vip"]["Enabled"] && !vipurl.empty())
 	{
 		LinkCode = vipurl.substr(vipurl.find("=") + 1);
 
@@ -305,7 +304,7 @@ void Autorestart::Start()
 		vip = true;
 	}
 
-	if (Config["watchdog"]) std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
+	if (Config["Watchdog"]) std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
 	//TODO: workspace interaction
 
 	while (true)
@@ -365,7 +364,7 @@ void Autorestart::Start()
 		Ready.store(true);
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
-			if (Config["forceminimize"] && FindWindow(NULL, "Roblox"))
+			if (Config["ForceMinimize"] && FindWindow(NULL, "Roblox"))
 			{
 				for (int i = 0; i < cookies.size(); i++)
 				{
