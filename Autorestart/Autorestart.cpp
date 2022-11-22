@@ -25,9 +25,9 @@
 using json = nlohmann::json;
 
 
-std::atomic<int> CookieCount = 0;
-std::atomic<bool> Error = false;
-std::atomic<bool> Ready = false;
+volatile int CookieCount = 0;
+volatile bool Error = false;
+volatile bool Ready = false;
 
 void Autorestart::UnlockRoblox()
 {
@@ -119,7 +119,7 @@ bool Autorestart::ValidateCookies()
 	{
 		cookies.push_back(line);
 	}
-	CookieCount.store(cookies.size());
+	CookieCount = cookies.size();
 
 	for (auto& cookie : cookies)
 	{
@@ -220,11 +220,11 @@ void Autorestart::RobloxProcessWatcher()
 		}
 
 		int tries = 0;
-		if (GetRobloxProcesses() < CookieCount.load())
+		if (GetRobloxProcesses() < CookieCount)
 		{
 			while (tries < 30)
 			{
-				if (GetRobloxProcesses() == CookieCount.load())
+				if (GetRobloxProcesses() == CookieCount)
 				{
 					break;
 				}
@@ -235,9 +235,9 @@ void Autorestart::RobloxProcessWatcher()
 
 		while (true)
 		{
-			if (GetRobloxProcesses() < CookieCount.load() && Ready.load())
+			if (GetRobloxProcesses() < CookieCount && Ready)
 			{
-				Error.store(true);
+				Error = true;
 				break;
 			}
 			Autorestart::_sleep(1000);
@@ -362,7 +362,7 @@ void Autorestart::Start()
 		COORD coord = { 0, 0 };
 		DWORD dwCharsWritten;
 		
-		Ready.store(true);
+		Ready = true;
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
 			if (Config["ForceMinimize"] && FindWindow(NULL, "Roblox"))
@@ -375,7 +375,7 @@ void Autorestart::Start()
 
 			if (Error)
 			{
-				Error.store(false);
+				Error = false;
 				break;
 			}
 
@@ -400,8 +400,8 @@ void Autorestart::Start()
 
 			_usleep(5000);
 		}
-		Ready.store(false);
-		Error.store(false);
+		Ready = false;
+		Error = false;
 		KillRoblox();
 		
 		while (Autorestart::FindRoblox())
