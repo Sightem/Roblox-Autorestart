@@ -121,6 +121,8 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>D:\out\STATIC\x64\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>MaxSpeed</Optimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,7 +135,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Autorestart.cpp" />
-    <ClCompile Include="FolderSearch.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="Roblox.cpp" />
     <ClCompile Include="Source.cpp" />
@@ -141,7 +142,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Autorestart.h" />
-    <ClInclude Include="FolderSearch.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Request.hpp" />
