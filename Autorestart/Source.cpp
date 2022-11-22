@@ -4,13 +4,13 @@
 #include <fstream>
 #include <windows.h>
 #include <Lmcons.h>
+#include <filesystem>
 
 //-- User libs
 #include "Request.hpp"
 #include "Autorestart.h"
 #include "Roblox.h"
 #include "Terminal.h"
-#include "FolderSearch.h"
 #include "Logger.h"
 #include "json.hpp"
 
@@ -30,6 +30,8 @@
 
 using json = nlohmann::json;
 using ordered_json = nlohmann::ordered_json;
+namespace fs = std::filesystem;
+
 
 void CreateConfig();
 void CreateCookies();
