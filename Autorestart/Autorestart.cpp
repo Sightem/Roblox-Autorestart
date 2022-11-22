@@ -195,19 +195,19 @@ std::vector<HANDLE> Autorestart::GetProcessesByImageName(const char* image_name,
 }
 
 //https://github.com/axstin/rbxfpsunlocker/blob/bb955b028d2a803ec409a01c17bebda1038e54aa/Source/main.cpp#L20
-std::vector<HANDLE> Autorestart::GetRobloxProcesses()
+size_t Autorestart::GetRobloxProcesses()
 {
-	std::vector<HANDLE> result;
+	size_t count = 0;
 
 	for (HANDLE handle : GetProcessesByImageName("RobloxPlayerBeta.exe", 20, PROCESS_ALL_ACCESS))
 	{
 		// Roblox has a security daemon process that runs under the same name as the client (as of 3/2/22 update). Don't unlock it.
 		BOOL debugged = FALSE;
 		CheckRemoteDebuggerPresent(handle, &debugged);
-		if (!debugged) result.push_back(handle);
+		if (!debugged) count++;
 	}
 
-	return result;
+	return count;
 }
 
 void Autorestart::RobloxProcessWatcher()
@@ -220,11 +220,11 @@ void Autorestart::RobloxProcessWatcher()
 		}
 
 		int tries = 0;
-		if (GetRobloxProcesses().size() < CookieCount.load())
+		if (GetRobloxProcesses() < CookieCount.load())
 		{
 			while (tries < 30)
 			{
-				if (GetRobloxProcesses().size() == CookieCount.load())
+				if (GetRobloxProcesses() == CookieCount.load())
 				{
 					break;
 				}
@@ -235,7 +235,7 @@ void Autorestart::RobloxProcessWatcher()
 
 		while (true)
 		{
-			if (GetRobloxProcesses().size() < CookieCount.load() && Ready.load())
+			if (GetRobloxProcesses() < CookieCount.load() && Ready.load())
 			{
 				Error.store(true);
 				break;

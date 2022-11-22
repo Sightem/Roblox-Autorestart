@@ -13,7 +13,7 @@ public:
 	void _sleep(int miliseconds);
 	void RobloxProcessWatcher();
 
-	std::vector<HANDLE> GetRobloxProcesses();
+	size_t GetRobloxProcesses();
 	std::vector<HANDLE> GetProcessesByImageName(const char* image_name, size_t limit, DWORD access);
 	
 	bool ValidateCookies();
