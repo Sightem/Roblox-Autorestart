@@ -304,7 +304,8 @@ void Autorestart::Start()
 		vip = true;
 	}
 
-	if (Config["Watchdog"]) std::thread RobloxProcessWatcherThread(&Autorestart::RobloxProcessWatcher, this);
+	std::thread RobloxProcessWatcherThread;
+	if (Config["Watchdog"])  RobloxProcessWatcherThread = std::thread(&Autorestart::RobloxProcessWatcher, this);
 	//TODO: workspace interaction
 
 	while (true)

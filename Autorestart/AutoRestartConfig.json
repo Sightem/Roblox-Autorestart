@@ -1,0 +1,16 @@
+{
+  "Timer": 10,
+  "PlaceID": 2414851778,
+  "TopMost": true,
+  "ForceMinimize": false,
+  "Resizablewindow": true,
+  "vip": {
+    "Enabled": false,
+    "url": ""
+  },
+  "workspaceinteraction": {
+    "Enabled": false,
+    "Path": ""
+  },
+  "Watchdog": true
+}

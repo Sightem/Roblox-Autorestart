@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
 	}
 
 	//-- Window size lock
-	if (Config["ResizableWindow"])
+	if (Config["Resizablewindow"])
 	{
 		SetWindowLong(GetConsoleWindow(), GWL_STYLE, GetWindowLong(GetConsoleWindow(), GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 	}
