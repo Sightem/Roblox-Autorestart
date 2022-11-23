@@ -54,9 +54,9 @@ int main(int argc, char* argv[])
 	//-- check if config.ini exists
 	if (!fs::exists("AutoRestartConfig.json"))
 	{
-		std::cout << "Config file not found, creating" << std::endl;
+		Log("Config file not found, creating", LOG_INFO);
 		CreateConfig();
-		std::cout << "Creation done please edit the config to your desire and re open the program" << std::endl;
+		Log("Creation done please edit the config to your desire and re open the program", LOG_INFO);
 		wait();
 		return 1;
 	}
@@ -115,6 +115,7 @@ void Compatibility()
 {
 	if (std::filesystem::exists("AccountData.json"))
 	{
+		//this is a forked version of RAMDecrypt, which removes the need to press enter when the decryption is done
 		system("curl -LJOs https://github.com/Sightem/RAMDecrypt/releases/download/yes/Program.exe");
 
 		json data;
@@ -181,9 +182,10 @@ void CreateConfig()
 			{"url", ""}
 			}
 		},
-		{"workspaceinteraction", {
+		{"WorkspaceInteraction", {
 			{"Enabled", false},
-			{"Path", ""}
+			{"Path", ""},
+			{"FileName", ""}
 			}
 		},
 		{"Watchdog", true}
