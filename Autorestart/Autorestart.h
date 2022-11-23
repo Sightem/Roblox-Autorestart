@@ -14,9 +14,9 @@ public:
 	void RobloxProcessWatcher();
 	void WorkspaceWatcher();
 
-	size_t GetRobloxProcesses();
-	std::vector<HANDLE> GetProcessesByImageName(const char* image_name, size_t limit, DWORD access);
-	
+	int GetInstanceCount();
+	HANDLE GetHandleFromPID(DWORD pid);
+
 	bool ValidateCookies();
 	bool FindRoblox();
 	bool FindFile(const std::string_view Directory, const std::string_view FileName);

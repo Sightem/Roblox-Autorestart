@@ -13,6 +13,7 @@
 #include <windows.h>
 #include <Tlhelp32.h>
 #include <tchar.h>
+#include <WtsApi32.h>
 
 //-- User libs
 #include "Autorestart.h"
@@ -21,6 +22,7 @@
 #include "Logger.h"
 #include "Request.hpp"
 #include "json.hpp"
+#pragma comment(lib, "Wtsapi32.lib" )
 
 using json = nlohmann::json;
 
@@ -164,49 +166,30 @@ bool Autorestart::ValidateCookies()
 	return true;
 }
 
-//https://github.com/axstin/rbxfpsunlocker/blob/bb955b028d2a803ec409a01c17bebda1038e54aa/Source/procutil.cpp#L10
-std::vector<HANDLE> Autorestart::GetProcessesByImageName(const char* image_name, size_t limit, DWORD access)
+HANDLE Autorestart::GetHandleFromPID(DWORD pid)
 {
-	std::vector<HANDLE> result;
+	return OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+}
 
-	PROCESSENTRY32 entry;
-	entry.dwSize = sizeof(PROCESSENTRY32);
-
-	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
-	size_t count = 0;
-
-	if (Process32First(snapshot, &entry) == TRUE)
+int Autorestart::GetInstanceCount()
+{
+	int count = 0;
+	WTS_PROCESS_INFO* pWPIs = NULL;
+	DWORD dwProcCount = 0;
+	if (WTSEnumerateProcesses(WTS_CURRENT_SERVER_HANDLE, NULL, 1, &pWPIs, &dwProcCount))
 	{
-		while (count < limit && Process32Next(snapshot, &entry) == TRUE)
+		for (DWORD i = 0; i < dwProcCount; i++)
 		{
-			if (_stricmp(entry.szExeFile, image_name) == 0)
+			std::string name = std::string(pWPIs[i].pProcessName);
+			if (name.find("RobloxPlayerBeta") != std::string::npos)
 			{
-				if (HANDLE process = OpenProcess(access, FALSE, entry.th32ProcessID))
-				{
-					result.push_back(process);
-					count++;
-				}
+				BOOL debugged = FALSE;
+				CheckRemoteDebuggerPresent(GetHandleFromPID(pWPIs[i].ProcessId), &debugged);
+				if (!debugged) count++;
 			}
 		}
 	}
-
-	CloseHandle(snapshot);
-	return result;
-}
-
-//https://github.com/axstin/rbxfpsunlocker/blob/bb955b028d2a803ec409a01c17bebda1038e54aa/Source/main.cpp#L20
-size_t Autorestart::GetRobloxProcesses()
-{
-	size_t count = 0;
-
-	for (HANDLE handle : GetProcessesByImageName("RobloxPlayerBeta.exe", 20, PROCESS_ALL_ACCESS))
-	{
-		// Roblox has a security daemon process that runs under the same name as the client (as of 3/2/22 update). Don't unlock it.
-		BOOL debugged = FALSE;
-		CheckRemoteDebuggerPresent(handle, &debugged);
-		if (!debugged) count++;
-	}
-
+	if (pWPIs) { WTSFreeMemory(pWPIs); pWPIs = NULL; }
 	return count;
 }
 
@@ -229,7 +212,7 @@ bool Autorestart::FindFile(const std::string_view Directory, const std::string_v
 }
 
 void Autorestart::WorkspaceWatcher()
-{
+{ 
 	std::ifstream i("AutoRestartConfig.json");
 	json Config;
 	i >> Config;
@@ -268,11 +251,11 @@ void Autorestart::RobloxProcessWatcher()
 		}
 
 		int tries = 0;
-		if (GetRobloxProcesses() < CookieCount)
+		if (GetInstanceCount() < CookieCount)
 		{
 			while (tries < 30)
 			{
-				if (GetRobloxProcesses() == CookieCount)
+				if (GetInstanceCount() == CookieCount)
 				{
 					break;
 				}
@@ -283,7 +266,7 @@ void Autorestart::RobloxProcessWatcher()
 
 		while (true)
 		{
-			if (GetRobloxProcesses() < CookieCount && Ready)
+			if (GetInstanceCount() < CookieCount && Ready)
 			{
 				Error.store(true);
 				break;
