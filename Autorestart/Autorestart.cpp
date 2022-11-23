@@ -28,6 +28,7 @@ using json = nlohmann::json;
 volatile int CookieCount = 0;
 volatile bool Error = false;
 volatile bool Ready = false;
+std::atomic<bool> Error = false;
 
 void Autorestart::UnlockRoblox()
 {
@@ -375,7 +376,7 @@ void Autorestart::Start()
 
 			if (Error)
 			{
-				Error = false;
+				Error.store(false);
 				break;
 			}
 
@@ -401,7 +402,7 @@ void Autorestart::Start()
 			_usleep(5000);
 		}
 		Ready = false;
-		Error = false;
+		Error.store(false);
 		KillRoblox();
 		
 		while (Autorestart::FindRoblox())
