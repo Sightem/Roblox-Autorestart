@@ -193,24 +193,6 @@ int Autorestart::GetInstanceCount()
 	return count;
 }
 
-bool Autorestart::FindFile(const std::string_view Directory, const std::string_view FileName)
-{
-	std::vector<std::string> files;
-	for (const auto& entry : std::filesystem::directory_iterator(Directory))
-	{
-		files.push_back(entry.path().string());
-	}
-
-	for (int i = 0; i < files.size(); i++)
-	{
-		if (files[i].find(FileName) != std::string::npos)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
 void Autorestart::WorkspaceWatcher()
 { 
 	std::ifstream i("AutoRestartConfig.json");
@@ -227,7 +209,7 @@ void Autorestart::WorkspaceWatcher()
 			std::this_thread::yield();
 		}
 
-		if (Autorestart::FindFile(Directory, FileName) && Ready)
+		if (std::filesystem::exists(Directory + FileName) && Ready)
 		{
 			std::string Path = Directory + "\\" + FileName;
 			LPCSTR PathLPCSTR = Path.c_str();
@@ -243,8 +225,12 @@ void Autorestart::WorkspaceWatcher()
 
 void Autorestart::RobloxProcessWatcher()
 {
+	std::mutex m;
+
 	while (true)
 	{
+		int stroke = 0;
+
 		while (!Ready) 
 		{
 			std::this_thread::yield();
@@ -268,8 +254,12 @@ void Autorestart::RobloxProcessWatcher()
 		{
 			if (GetInstanceCount() < CookieCount && Ready)
 			{
-				Error.store(true);
-				break;
+				stroke++;
+				if (stroke == 30)
+				{
+					Error.store(true);
+					break;
+				}
 			}
 			Autorestart::_sleep(1000);
 		}
@@ -337,7 +327,7 @@ void Autorestart::Start()
 
 	std::thread RobloxProcessWatcherThread;
 	std::thread WorkspaceWatcherThread;
-	if (Config["Watchdog"])  RobloxProcessWatcherThread = std::thread(&Autorestart::RobloxProcessWatcher, this);
+	if (Config["Watchdog"]) RobloxProcessWatcherThread = std::thread(&Autorestart::RobloxProcessWatcher, this);
 	if (Config["WorkspaceInteraction"]["Enabled"]) WorkspaceWatcherThread = std::thread(&Autorestart::WorkspaceWatcher, this);
 
 	while (true)
