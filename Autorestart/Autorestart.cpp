@@ -225,8 +225,6 @@ void Autorestart::WorkspaceWatcher()
 
 void Autorestart::RobloxProcessWatcher()
 {
-	std::mutex m;
-
 	while (true)
 	{
 		int stroke = 0;
