@@ -66,7 +66,7 @@ void Autorestart::KillRoblox()
 {
 	clear();
 	Log("Killing Roblox", "AutoRestart", true);
-	bool found = Autorestart::FindRoblox() ? true : false;
+	bool found = Autorestart::FindRoblox();
 	if (found)
 	{
 		HANDLE hSnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPALL, NULL);
@@ -76,7 +76,7 @@ void Autorestart::KillRoblox()
 		BOOL hRes = Process32First(hSnapShot, &pEntry);
 		while (hRes)
 		{
-			if (strcmp(pEntry.szExeFile, "RobloxPlayerBeta.exe") == 0)
+			if (!strcmp(pEntry.szExeFile, "RobloxPlayerBeta.exe"))
 			{
 				HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)pEntry.th32ProcessID);
 
@@ -85,7 +85,6 @@ void Autorestart::KillRoblox()
 					TerminateProcess(hProcess, 9);
 					CloseHandle(hProcess);
 				}
-
 			}
 			hRes = Process32Next(hSnapShot, &pEntry);
 		}
@@ -327,9 +326,11 @@ void Autorestart::Start()
 	std::thread WorkspaceWatcherThread;
 	if (Config["Watchdog"]) RobloxProcessWatcherThread = std::thread(&Autorestart::RobloxProcessWatcher, this);
 	if (Config["WorkspaceInteraction"]["Enabled"]) WorkspaceWatcherThread = std::thread(&Autorestart::WorkspaceWatcher, this);
-
+	
 	while (true)
 	{
+		Log("Launching Roblox", "AutoRestart", true);
+		
 		for (int i = 0; i < cookies.size(); i++)
 		{
 			UnlockRoblox();
@@ -377,14 +378,16 @@ void Autorestart::Start()
 		}
 
 		auto start = std::chrono::steady_clock::now();
-
-		HANDLE hOut;
-		COORD coord = { 0, 0 };
-		DWORD dwCharsWritten;
 		
 		Ready = true;
+		
+		Log("Restarting in ", "AutoRestart", true);
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
+			std::string timeleftstr = std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() + 1);
+
+			std::cout << timeleftstr << " minutes";
+
 			if (Config["ForceMinimize"] && FindWindow(NULL, "Roblox"))
 			{
 				for (int i = 0; i < cookies.size(); i++)
@@ -399,12 +402,6 @@ void Autorestart::Start()
 				break;
 			}
 
-			std::string msg = "(" + std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() + 1) + " minutes)";
-
-			hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-			FillConsoleOutputCharacter(hOut, ' ', 80 * 25, coord, &dwCharsWritten);
-			SetConsoleCursorPosition(hOut, coord);
-
 			if (FindWindow(NULL, "Authentication Failed") || FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
 			{
 				HWND hWnd = FindWindow(NULL, "Authentication Failed");
@@ -412,12 +409,11 @@ void Autorestart::Start()
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "ROBLOX Crash");
 				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Roblox Crash");
 				if (hWnd != NULL)				SendMessage(hWnd, WM_CLOSE, 0, 0);
-
+				
 				break;
 			}
 
-			Log(msg, "AutoRestart");
-
+			std::cout << std::string(timeleftstr.length() + 8, '\b');
 			_usleep(5000);
 		}
 		Ready = false;
