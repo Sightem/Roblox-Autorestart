@@ -20,6 +20,4 @@ public:
 	bool ValidateCookies();
 	bool FindRoblox();
 
-private:
-	std::vector<PROCESS_INFORMATION> robloxProcesses;
 };

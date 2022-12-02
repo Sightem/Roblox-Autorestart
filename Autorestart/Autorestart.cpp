@@ -5,7 +5,6 @@
 #include <thread>
 #include <vector>
 #include <filesystem>
-#include <Lmcons.h>
 #include <regex>
 #include <thread>
 #include <atomic>
@@ -372,7 +371,6 @@ void Autorestart::Start()
 				return;
 			}
 			WaitForSingleObject(pi.hProcess, INFINITE);
-			this->robloxProcesses.push_back(pi);
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
 			_usleep(10000);
@@ -382,7 +380,7 @@ void Autorestart::Start()
 		
 		Ready = true;
 		
-		Log("Restarting in ", "AutoRestart", true);
+		Log("Restarting in", "AutoRestart", false);
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
 		{
 			std::string timeleftstr = std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() + 1);
