@@ -253,7 +253,7 @@ void Autorestart::RobloxProcessWatcher()
 			if (GetInstanceCount() < CookieCount && Ready)
 			{
 				stroke++;
-				if (stroke == 30)
+				if (stroke == 15)
 				{
 					Error.store(true);
 					break;
