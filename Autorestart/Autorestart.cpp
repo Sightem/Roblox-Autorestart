@@ -182,9 +182,10 @@ int Autorestart::GetInstanceCount()
 			std::string name = std::string(pWPIs[i].pProcessName);
 			if (name.find("RobloxPlayerBeta") != std::string::npos)
 			{
+				HANDLE hProcess = GetHandleFromPID(pWPIs[i].ProcessId);
 				BOOL debugged = FALSE;
-				CheckRemoteDebuggerPresent(GetHandleFromPID(pWPIs[i].ProcessId), &debugged);
-				if (!debugged) count++;
+				CheckRemoteDebuggerPresent(hProcess, &debugged);
+				debugged ? TerminateProcess(hProcess, 9) : count++; //this really shouldnt be here but whatever
 			}
 		}
 	}
