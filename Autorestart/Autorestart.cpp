@@ -236,7 +236,7 @@ void Autorestart::RobloxProcessWatcher()
 		int tries = 0;
 		if (GetInstanceCount() < CookieCount)
 		{
-			while (tries < 30)
+			while (tries == 30)
 			{
 				if (GetInstanceCount() == CookieCount)
 				{
@@ -335,7 +335,7 @@ void Autorestart::Start()
 		{
 			UnlockRoblox();
 
-			std::string authticket = getRobloxTicket(cookies.at(i));
+			std::string authticket = getRobloxTicket(cookies[i]);
 
 			std::string path;
 
