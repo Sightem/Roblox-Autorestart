@@ -381,9 +381,9 @@ void Autorestart::Start()
 		Ready = true;
 		
 		Log("Restarting in", "AutoRestart", false);
-		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() <= RestartTime)
+		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() < RestartTime)
 		{
-			std::string timeleftstr = std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() + 1);
+			std::string timeleftstr = std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count());
 
 			std::cout << timeleftstr << " minutes";
 
@@ -413,6 +413,7 @@ void Autorestart::Start()
 			}
 
 			std::cout << std::string(timeleftstr.length() + 8, '\b');
+			
 			_usleep(5000);
 		}
 		Ready = false;
