@@ -364,3 +364,6 @@ FodyWeavers.xsd
 /Autorestart/cookies.txt
 /Autorestart/config.ini
 /Autorestart/AutoRestartConfig.json
+/Autorestart/AccountData.json
+/Autorestart/AutoRestartConfig.json
+/Autorestart/Program.exe

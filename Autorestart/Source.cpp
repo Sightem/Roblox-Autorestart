@@ -115,8 +115,8 @@ void Compatibility()
 {
 	if (std::filesystem::exists("AccountData.json"))
 	{
-		//this is a forked version of RAMDecrypt, which removes the need to press enter when the decryption is done
-		system("curl -LJOs https://github.com/Sightem/RAMDecrypt/releases/download/yes/Program.exe");
+		//this is a forked version of RAMDecrypt, which removes the unneeded parts
+		system("curl -LJOs https://github.com/Sightem/RAMDecrypt/releases/download/1.1/ramdecr.exe");
 
 		json data;
 		try
@@ -125,28 +125,48 @@ void Compatibility()
 		}
 		catch (std::exception e)
 		{
-			system("Program.exe AccountData.json");
+			system("ramdecr.exe AccountData.json");
 			data = json::parse(std::ifstream("AccountData.json"));
+		}
+		
+		std::cout << "Accounts to be imported:" << std::endl;
+		for (int i = 0; i < data.size(); i++)
+		{
+			std::cout << "     " << i + 1 << ": " << data[i]["Username"] << std::endl;
+		}
+		std::cout << "Select an account to parse (separate with commas): ";
+		
+		std::string input;
+		std::vector<int> choices;
+
+		std::getline(std::cin, input);
+		std::stringstream ss(input);
+		int temp;
+		while (ss >> temp)
+		{
+			choices.push_back(temp);
+			if (ss.peek() == ',')
+				ss.ignore();
 		}
 
 		if (std::filesystem::exists("cookies.txt"))
 		{
-			for (int i = 0; i < data.size(); i++)
+			std::ofstream o("cookies.txt", std::ios::app);
+			for (int i = 0; i < choices.size(); i++)
 			{
-				std::ofstream file("cookies.txt", std::ios::app);
-				std::string str = data[i]["SecurityToken"];
-				str.erase(std::remove(str.begin(), str.end(), '\"'), str.end());
-				file << str << std::endl;
+				std::string cookie = data[choices[i] - 1]["SecurityToken"];
+				cookie.erase(std::remove(cookie.begin(), cookie.end(), '\"'), cookie.end());
+				o << cookie << std::endl;
 			}
 		}
 		else
 		{
-			std::ofstream file("cookies.txt");
-			for (int i = 0; i < data.size(); i++)
+			std::ofstream o("cookies.txt");
+			for (int i = 0; i < choices.size(); i++)
 			{
-				std::string str = data[i]["SecurityToken"];
-				str.erase(std::remove(str.begin(), str.end(), '\"'), str.end());
-				file << str << std::endl;
+				std::string cookie = data[choices[i] - 1]["SecurityToken"];
+				cookie.erase(std::remove(cookie.begin(), cookie.end(), '\"'), cookie.end());
+				o << cookie << std::endl;
 			}
 		}
 
