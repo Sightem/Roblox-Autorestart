@@ -115,6 +115,8 @@ void Compatibility()
 {
 	if (std::filesystem::exists("AccountData.json"))
 	{
+		bool cookiesexist = std::filesystem::exists("cookies.txt");
+
 		//this is a forked version of RAMDecrypt, which removes the unneeded parts
 		system("curl -LJOs https://github.com/Sightem/RAMDecrypt/releases/download/1.1/ramdecr.exe");
 
@@ -129,7 +131,46 @@ void Compatibility()
 			data = json::parse(std::ifstream("AccountData.json"));
 		}
 		
-		std::cout << "Accounts to be imported:" << std::endl;
+		if (cookiesexist)
+		{
+			std::vector<std::string> cookies;
+			std::ifstream cookiefile("cookies.txt");
+			std::string line;
+			while (std::getline(cookiefile, line))
+			{
+				cookies.push_back(line);
+			}
+			
+			std::vector<std::string> usernames;
+			Request req("https://users.roblox.com/v1/users/authenticated");
+			req.set_header("Referer", "https://www.roblox.com/");
+			req.set_header("Accept", "application/json");
+			req.set_header("Content-Type", "application/json");
+			req.initalize();
+			
+			for (int i = 0; i < cookies.size(); i++)
+			{
+				req.set_cookie(".ROBLOSECURITY", cookies[i]);
+				Response res = req.get();
+				
+				usernames.push_back(json::parse(res.data)["name"].get<std::string>());
+			}
+
+			Log("Cookies already exist for the following accounts: ", LOG_WARNING, false);
+			for (int i = 0; i < usernames.size(); i++)
+			{
+				if (i == usernames.size() - 1)
+				{
+					std::cout << usernames[i] << std::endl;
+				}
+				else
+				{
+					std::cout << usernames[i] << ", ";
+				}
+			}
+		}
+		
+		Log("Accounts to be imported: ", LOG_INFO, true);
 		for (int i = 0; i < data.size(); i++)
 		{
 			std::cout << "     " << i + 1 << ": " << data[i]["Username"] << std::endl;
@@ -149,7 +190,7 @@ void Compatibility()
 				ss.ignore();
 		}
 
-		if (std::filesystem::exists("cookies.txt"))
+		if (cookiesexist)
 		{
 			std::ofstream o("cookies.txt", std::ios::app);
 			for (int i = 0; i < choices.size(); i++)
