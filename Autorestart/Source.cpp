@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
 	{
 		for (int i = 0; i < argc; i++)
 		{
-			if (strcmp(argv[i], "compat") == 0) { compat = 1; }
+			if (strcmp(argv[i], "compat") == 0) { compat = true; }
 		}
 	}
 
@@ -210,12 +210,11 @@ void Compatibility()
 				o << cookie << std::endl;
 			}
 		}
-
 	}
 	else
 	{
 		std::cout << "AccountData.json not found, please place it in the same directory as this executable" << std::endl;
-		system("pause");
+		wait();
 	}
 }
 

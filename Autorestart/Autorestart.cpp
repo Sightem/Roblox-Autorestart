@@ -373,13 +373,12 @@ void Autorestart::Start()
 			WaitForSingleObject(pi.hProcess, INFINITE);
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
-			_usleep(10000);
 		}
 
 		auto start = std::chrono::steady_clock::now();
 		
 		Ready = true;
-		
+
 		Log("Restarting in", "AutoRestart", false);
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() < RestartTime)
 		{
