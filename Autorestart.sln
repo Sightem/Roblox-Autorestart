@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32630.192
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Autorestart", "Autorestart\Autorestart.vcxproj", "{0A6BF173-8B30-44BC-8350-6C98C04F6240}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Debug|x64.ActiveCfg = Debug|x64
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Debug|x64.Build.0 = Debug|x64
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Debug|x86.ActiveCfg = Debug|Win32
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Debug|x86.Build.0 = Debug|Win32
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Release|x64.ActiveCfg = Release|x64
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Release|x64.Build.0 = Release|x64
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Release|x86.ActiveCfg = Release|Win32
+		{0A6BF173-8B30-44BC-8350-6C98C04F6240}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {91D1F751-48BA-46BA-AF9C-EC48F2181C1D}
+	EndGlobalSection
+EndGlobal
