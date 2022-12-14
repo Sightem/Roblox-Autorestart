@@ -162,7 +162,8 @@ bool Autorestart::ValidateCookies()
 			return false;
 		}
 	}
-	Log("ze cookie(s) are valid!", "AutoRestart", true);
+	if (cookies.size() == 1) Log("ze cookie is valid!", "AutoRestart", true);
+	else Log("ze cookies are valid!", "AutoRestart", true);
 	return true;
 }
 
