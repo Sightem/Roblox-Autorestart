@@ -19,8 +19,10 @@
 #include "Roblox.h"
 #include "Terminal.h"
 #include "Logger.h"
+#include "Roblox.h"
 #include "Request.hpp"
 #include "json.hpp"
+
 #pragma comment(lib, "Wtsapi32.lib" )
 
 using json = nlohmann::json;
@@ -321,7 +323,8 @@ void Autorestart::Start()
 
 		vip = true;
 	}
-
+	
+	
 	std::thread RobloxProcessWatcherThread;
 	std::thread WorkspaceWatcherThread;
 	if (Config["Watchdog"]) RobloxProcessWatcherThread = std::thread(&Autorestart::RobloxProcessWatcher, this);
@@ -345,6 +348,15 @@ void Autorestart::Start()
 			path = value;
 			path = path.substr(1, path.length() - 5);
 
+
+			bool sameserver = Config["SameServer"];
+			std::string JobID;
+
+			if (sameserver)
+			{
+				JobID = GetSmallestJobID(Config["PlaceID"]);
+			}
+
 			srand((unsigned int)time(NULL));
 
 			std::string randomnumber = std::to_string(rand() % 100000 + 100000);
@@ -356,6 +368,11 @@ void Autorestart::Start()
 			if (vip)
 			{
 				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + placeid + "%26accessCode%3D" + AccessCode + "%26linkCode%3D" + LinkCode + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
+			}
+			else if (sameserver)
+			{
+				//"C:\Program Files (x86)\Roblox\Versions\version-e3de6c198f2c469b\RobloxPlayerLauncher.exe" roblox-player:1+launchmode:play+gameinfo:Jr4bxRR8ihxr0LhsBkQwFcO2nlZpOEWt0UILjKgcdv7ejjvUz4uGAGIZMBFiXA5bDmi3TWDKi6zrQrEXoi2eHLhfvGPngedA6flbxuOlGNX7cbb7rY4gZp-cIRFjvxfV8o1MhqTIDWMQZWCOj-cHjAIJ436b1lUq1F29rgZIrBqzVlLBY2Z3pfCQsB1YOBieJAwY3f0AkHaU9UF1-mQ1XbvUA3AjPEwW02tz9vUc3GI+launchtime:1670987898936+placelauncherurl:https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGameJob%26browserTrackerId%3D153018838043%26placeId%3D2414851778%26gameId%3D8dae8c08-6082-45cc-8a8f-ae510d90c60f%26isPlayTogetherGame%3Dfalse+browsertrackerid:153018838043+robloxLocale:en_us+gameLocale:en_us+channel:+LaunchExp:InApp
+				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGameJob%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + placeid + "%26gameId%3D" + JobID + "%26isPlayTogetherGame%3Dfalse" + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
 			}
 			else
 			{

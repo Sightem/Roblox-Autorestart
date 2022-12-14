@@ -221,6 +221,7 @@ void CreateConfig()
 	{
 		{"Timer", 10},
 		{"PlaceID", 1},
+		{"SameServer", true},
 		{"TopMost", true},
 		{"ForceMinimize", false},
 		{"Resizablewindow", false},

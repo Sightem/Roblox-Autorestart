@@ -1,11 +1,4 @@
-#include <vector>
-#include <string>
-
 #include "Roblox.h"
-#include "Request.hpp"
-#include "json.hpp"
-
-using json = nlohmann::json;
 
 std::string getRobloxTicket(std::string cookie) {
     // first we need to get the csrf token
@@ -49,4 +42,32 @@ std::vector<std::string> GetUsernames(std::vector<std::string> cookies) {
 		usernames.push_back(json::parse(res.data)["name"].get<std::string>());
 	}
 	return usernames;
+}
+
+std::string GetSmallestJobID(long long PlaceID)
+{
+	Request req("https://games.roblox.com/v1/games/" + std::to_string(PlaceID) + "/servers/0?sortOrder=1&excludeFullGames=true&limit=10");
+	req.set_header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36");
+	req.set_header("Referer", "https://www.roblox.com/");
+	req.set_header("Accept", "application/json");
+	req.set_header("Content-Type", "application/json");
+	req.initalize();
+
+	Response res = req.get();
+
+	json jres = json::parse(res.data);
+
+	//if there are no jobs, return an empty string
+	if (jres["data"].size() == 0) return "";
+
+	//if there is only one job, return it
+	if (jres["data"].size() == 1) return jres["data"][0]["id"];
+
+	std::map<long, std::string> jobs;
+	for (int i = 0; i < jres["data"].size(); i++)
+	{
+		jobs[jres["data"][i]["ping"]] = jres["data"][i]["id"];
+	}
+
+	return jobs.begin()->second;
 }
