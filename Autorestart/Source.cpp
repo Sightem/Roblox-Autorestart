@@ -141,20 +141,7 @@ void Compatibility()
 				cookies.push_back(line);
 			}
 			
-			std::vector<std::string> usernames;
-			Request req("https://users.roblox.com/v1/users/authenticated");
-			req.set_header("Referer", "https://www.roblox.com/");
-			req.set_header("Accept", "application/json");
-			req.set_header("Content-Type", "application/json");
-			req.initalize();
-			
-			for (int i = 0; i < cookies.size(); i++)
-			{
-				req.set_cookie(".ROBLOSECURITY", cookies[i]);
-				Response res = req.get();
-				
-				usernames.push_back(json::parse(res.data)["name"].get<std::string>());
-			}
+			std::vector<std::string> usernames = GetUsernames(cookies);
 
 			Log("Cookies already exist for the following accounts: ", LOG_WARNING, false);
 			for (int i = 0; i < usernames.size(); i++)

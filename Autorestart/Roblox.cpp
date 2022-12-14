@@ -1,5 +1,11 @@
+#include <vector>
+#include <string>
+
 #include "Roblox.h"
 #include "Request.hpp"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 std::string getRobloxTicket(std::string cookie) {
     // first we need to get the csrf token
@@ -25,4 +31,22 @@ std::string getRobloxTicket(std::string cookie) {
     // parse the headers to get the auth ticket
     std::string ticket = res.headers["rbx-authentication-ticket"];
     return ticket;
+}
+
+std::vector<std::string> GetUsernames(std::vector<std::string> cookies) {
+	std::vector<std::string> usernames;
+	Request req("https://users.roblox.com/v1/users/authenticated");
+	req.set_header("Referer", "https://www.roblox.com/");
+	req.set_header("Accept", "application/json");
+	req.set_header("Content-Type", "application/json");
+	req.initalize();
+
+	for (int i = 0; i < cookies.size(); i++)
+	{
+		req.set_cookie(".ROBLOSECURITY", cookies[i]);
+		Response res = req.get();
+
+		usernames.push_back(json::parse(res.data)["name"].get<std::string>());
+	}
+	return usernames;
 }
