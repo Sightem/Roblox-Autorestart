@@ -444,9 +444,10 @@ void Autorestart::Start()
 		Error.store(false);
 		KillRoblox();
 		
-		while (Autorestart::FindRoblox())
+		if (Config["WaitTimeAfterRestart"] != 0)
 		{
-			std::this_thread::yield();
+			Log("Waiting for " + Config["WaitTimeAfterRestart"].dump() + " millieseconds" , "AutoRestart", true);
+			Autorestart::_sleep(Config["WaitTimeAfterRestart"]);
 		}
 	}
 }

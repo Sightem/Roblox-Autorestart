@@ -236,6 +236,7 @@ void CreateConfig()
 			{"FileName", ""}
 			}
 		},
+		{"WaitTimeAfterRestart", 10000},
 		{"Watchdog", true}
 	};
 	
