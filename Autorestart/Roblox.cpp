@@ -44,10 +44,11 @@ std::vector<std::string> GetUsernames(std::vector<std::string> cookies) {
 	return usernames;
 }
 
-std::string GetSmallestJobID(long long PlaceID)
+std::string GetSmallestJobID(long long PlaceID, std::string cookie)
 {
 	Request req("https://games.roblox.com/v1/games/" + std::to_string(PlaceID) + "/servers/0?sortOrder=1&excludeFullGames=true&limit=10");
 	req.set_header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36");
+	req.set_cookie(".ROBLOSECURITY", cookie);
 	req.set_header("Referer", "https://www.roblox.com/");
 	req.set_header("Accept", "application/json");
 	req.set_header("Content-Type", "application/json");
@@ -57,8 +58,11 @@ std::string GetSmallestJobID(long long PlaceID)
 
 	json jres = json::parse(res.data);
 
-	//if there are no jobs, return an empty string
-	if (jres["data"].size() == 0) return "";
+	//if there are no jobs, throw an exception
+	if (jres["data"].size() == 0) throw std::exception("No jobs found");
+
+	//if maxplayer is 1 throw
+	if (jres["data"][0]["maxPlayers"] == 1) throw std::exception("Max player count is 1");
 
 	//if there is only one job, return it
 	if (jres["data"].size() == 1) return jres["data"][0]["id"];

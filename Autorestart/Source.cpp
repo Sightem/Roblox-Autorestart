@@ -125,7 +125,7 @@ void Compatibility()
 		{
 			data = json::parse(std::ifstream("AccountData.json"));
 		}
-		catch (std::exception e)
+		catch (std::exception& e)
 		{
 			system("ramdecr.exe AccountData.json");
 			data = json::parse(std::ifstream("AccountData.json"));

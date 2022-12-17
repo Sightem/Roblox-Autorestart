@@ -341,7 +341,15 @@ void Autorestart::Start()
 
 		if (sameserver)
 		{
-			JobID = GetSmallestJobID(Config["PlaceID"]);
+			try
+			{
+				JobID = GetSmallestJobID(Config["PlaceID"], cookies[0]);
+			}
+			catch (std::exception& e)
+			{
+				Log("Failed to get JobID, defaulting to normal", LOG_WARNING, true);
+				sameserver = false;
+			}
 		}
 		
 		for (int i = 0; i < cookies.size(); i++)
