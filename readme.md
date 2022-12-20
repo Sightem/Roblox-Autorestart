@@ -1,2 +1,1 @@
-## Usage
-Visit the [wiki](https://github.com/system69-e/Roblox-Autorestart/wiki)
+[![forthebadge](https://forthebadge.com/images/badges/works-on-my-machine.svg)](https://forthebadge.com)
