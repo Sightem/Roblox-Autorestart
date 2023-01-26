@@ -3,7 +3,6 @@
 #include <string>
 #include <fstream>
 #include <windows.h>
-#include <Lmcons.h>
 #include <filesystem>
 
 //-- User libs
@@ -11,8 +10,8 @@
 #include "Autorestart.h"
 #include "Roblox.h"
 #include "Terminal.h"
-#include "Logger.h"
 #include "json.hpp"
+#include "Logger.h"
 
 //-- External libs
 #ifdef _DEBUG
@@ -32,14 +31,36 @@ using json = nlohmann::json;
 using ordered_json = nlohmann::ordered_json;
 namespace fs = std::filesystem;
 
+const ordered_json DEFAULT_CONFIG =
+{
+	{"Timer", 10},
+	{"PlaceID", 1},
+	{"SameServer", true},
+	{"TopMost", true},
+	{"ForceMinimize", false},
+	{"Resizablewindow", false},
+	{"vip", {
+		{"Enabled", false},
+		{"url", ""}
+		}
+	},
+	{"WaitTimeAfterRestart", 10000},
+	{"Watchdog", true}
+};
+
 
 void CreateConfig();
 void CreateCookies();
 void Compatibility();
+void PatchConfig();
+std::string return_current_time_and_date();
+
+Logger logger({ &std::cout });
+std::ofstream logFile;
 
 int main(int argc, char* argv[])
 {
-	SetConsoleTitle("Roblox Autorestart");
+	SetConsoleTitle("Roblox Autorestart v6dbg");
 
 	//-- Read launch arguments
 	bool compat = false;
@@ -51,12 +72,36 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	//-- check if config.ini exists
+	//-- Logging setup
+	if (std::filesystem::exists("logs") == false) 
+	{ 
+		std::filesystem::create_directory("logs"); 
+	}
+
+	std::string filename = "logs/AutoRestart-" + return_current_time_and_date() + ".txt";
+	std::ofstream file(filename);
+	if (file.is_open()) 
+	{
+		file.close();
+	}
+	else 
+	{
+		std::cout << "Error creating file " << filename << " in 'logs' directory." << std::endl;
+		wait();
+		return 1;
+	}
+
+	logFile = std::ofstream(filename, std::ios::app);
+	logger.addStream(&logFile);
+	logger.setFormatString("[%Y-%m-%d %H:%M:%S]");
+	logger.setPrefix("[AutoRestart] [Main] ");
+
+	//-- check if AutoRestartConfig.json exists
 	if (!fs::exists("AutoRestartConfig.json"))
 	{
-		Log("Config file not found, creating", LOG_INFO);
+		logger.print(LogLevel::Info, "Config file not found, creating");
 		CreateConfig();
-		Log("Creation done please edit the config to your desire and re open the program", LOG_INFO);
+		logger.print(LogLevel::Info, "Config file created");
 		wait();
 		return 1;
 	}
@@ -80,6 +125,9 @@ int main(int argc, char* argv[])
 		wait();
 		return 1;
 	}
+
+	//-- Check if config is up to date
+	PatchConfig();
 	
 	//-- Top Most
 	if (Config["TopMost"])
@@ -99,13 +147,14 @@ int main(int argc, char* argv[])
 		Compatibility();
 	}
 
-	if (Autorestart().ValidateCookies())
+	Autorestart autorestart(logger);
+	if (autorestart.ValidateCookies())
 	{
-		Autorestart().Start();
+		autorestart.Start();
 	}
 	else
 	{
-		Log("Cookie validation failed.", LOG_ERROR);
+		logger.print(LogLevel::Error, "Cookie validation failed.");
 		wait();
 		return 0;
 	}
@@ -113,6 +162,8 @@ int main(int argc, char* argv[])
 
 void Compatibility()
 {
+	logger.print(LogLevel::Info, "Running in compatibility mode");
+
 	if (std::filesystem::exists("AccountData.json"))
 	{
 		bool cookiesexist = std::filesystem::exists("cookies.txt");
@@ -143,7 +194,8 @@ void Compatibility()
 			
 			std::vector<std::string> usernames = GetUsernames(cookies);
 
-			Log("Cookies already exist for the following accounts: ", LOG_WARNING, false);
+			logger.print({ &std::cout }, LogLevel::Warning, "Cookies already exist for the following accounts: ");
+			logger.print({ &logFile }, LogLevel::Warning, "Cookies already present, presenting cookies to the user");
 			for (int i = 0; i < usernames.size(); i++)
 			{
 				if (i == usernames.size() - 1)
@@ -157,7 +209,7 @@ void Compatibility()
 			}
 		}
 		
-		Log("Accounts to be imported: ", LOG_INFO, true);
+		logger.print({ &std::cout }, LogLevel::Info, "Accounts to be imported: ");
 		for (int i = 0; i < data.size(); i++)
 		{
 			std::cout << "     " << i + 1 << ": " << data[i]["Username"] << std::endl;
@@ -203,6 +255,8 @@ void Compatibility()
 		std::cout << "AccountData.json not found, please place it in the same directory as this executable" << std::endl;
 		wait();
 	}
+
+	logger.print({ &logFile }, LogLevel::Info, "Import complete.");
 }
 
 void CreateCookies()
@@ -217,30 +271,56 @@ void CreateConfig()
 	std::ofstream config;
 	config.open("AutoRestartConfig.json");
 	
-	ordered_json data =
-	{
-		{"Timer", 10},
-		{"PlaceID", 1},
-		{"SameServer", true},
-		{"TopMost", true},
-		{"ForceMinimize", false},
-		{"Resizablewindow", false},
-		{"vip", {
-			{"Enabled", false},
-			{"url", ""}
-			}
-		},
-		{"WorkspaceInteraction", {
-			{"Enabled", false},
-			{"Path", ""},
-			{"FileName", ""}
-			}
-		},
-		{"WaitTimeAfterRestart", 10000},
-		{"Watchdog", true}
-	};
-	
-	config << data.dump(4);
+	config << DEFAULT_CONFIG.dump(4);
 	
 	config.close();
+}
+
+void PatchConfig()
+{
+	std::cout << "patching\n";
+
+	std::ifstream i("AutoRestartConfig.json");
+
+	ordered_json localConfig;
+	
+	try
+	{
+		localConfig = ordered_json::parse(i);
+	}
+	catch (std::exception& e)
+	{
+		std::cout << "Error parsing config file: " << e.what() << std::endl;
+		wait();
+		return;
+	}
+
+	ordered_json patch = ordered_json::diff(localConfig, DEFAULT_CONFIG);
+
+	for (int i = 0; i < patch.size(); i++)
+	{
+		if (patch[i].contains("op") && patch[i]["op"] == "replace")
+		{
+			patch.erase(i);
+			i--;
+		}
+	}
+
+	ordered_json newConfig = localConfig.patch(patch);
+
+	std::ofstream o("AutoRestartConfig.json");
+	o << newConfig.dump(4);
+}
+
+std::string return_current_time_and_date()
+{
+	auto now = std::chrono::system_clock::now();
+	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+	std::stringstream ss;
+	std::string unixtime = std::to_string(in_time_t);
+
+	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d-");
+	ss << unixtime;
+	return ss.str();
 }

@@ -1,35 +1,28 @@
-#define CURL_STATICLIB
 #include <iostream>
 #include <chrono>
 #include <fstream>
 #include <thread>
 #include <vector>
-#include <filesystem>
 #include <regex>
 #include <thread>
 #include <atomic>
-#include <direct.h>
 #include <windows.h>
 #include <Tlhelp32.h>
 #include <tchar.h>
-#include <WtsApi32.h>
 
 //-- User libs
 #include "Autorestart.h"
 #include "Roblox.h"
 #include "Terminal.h"
-#include "Logger.h"
 #include "Roblox.h"
 #include "Request.hpp"
 #include "json.hpp"
-
-#pragma comment(lib, "Wtsapi32.lib" )
+#include "Logger.h"
+#include "Functions.h"
+#include "BS_thread_pool.hpp"
 
 using json = nlohmann::json;
 
-
-volatile int CookieCount = 0;
-volatile bool Ready = false;
 std::atomic<bool> Error = false;
 
 void Autorestart::UnlockRoblox()
@@ -37,106 +30,71 @@ void Autorestart::UnlockRoblox()
 	CreateMutex(NULL, TRUE, "ROBLOX_singletonMutex");
 }
 
-bool Autorestart::FindRoblox()
-{
-	PROCESSENTRY32 entry;
-	entry.dwSize = sizeof(PROCESSENTRY32);
-
-	const auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
-
-	if (!Process32First(snapshot, &entry))
-	{
-		CloseHandle(snapshot);
-		return false;
-	}
-
-	do
-	{
-		if (!_tcsicmp(entry.szExeFile, "RobloxPlayerBeta.exe"))
-		{
-			CloseHandle(snapshot);
-			return true;
-		}
-	} while (Process32Next(snapshot, &entry));
-
-	CloseHandle(snapshot);
-	return false;
-}
-
 void Autorestart::KillRoblox()
 {
 	clear();
-	Log("Killing Roblox", "AutoRestart", true);
-	bool found = Autorestart::FindRoblox();
-	if (found)
+	logger.print(LogLevel::Info, "Killing Roblox");
+	HANDLE hSnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+	
+	if (hSnapShot != INVALID_HANDLE_VALUE)
 	{
-		HANDLE hSnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPALL, NULL);
-		PROCESSENTRY32 pEntry;
-
-		pEntry.dwSize = sizeof(pEntry);
-		BOOL hRes = Process32First(hSnapShot, &pEntry);
-		while (hRes)
+		PROCESSENTRY32 entry;
+		entry.dwSize = sizeof(PROCESSENTRY32);
+		if (Process32First(hSnapShot, &entry))
 		{
-			if (!strcmp(pEntry.szExeFile, "RobloxPlayerBeta.exe"))
+			do
 			{
-				HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)pEntry.th32ProcessID);
-
-				if (hProcess != NULL)
+				if (!_tcsicmp(entry.szExeFile, "RobloxPlayerBeta.exe"))
 				{
-					TerminateProcess(hProcess, 9);
-					CloseHandle(hProcess);
+					HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)entry.th32ProcessID);
+					if (hProcess != NULL)
+					{
+						TerminateProcess(hProcess, 9);
+						CloseHandle(hProcess);
+					}
 				}
-			}
-			hRes = Process32Next(hSnapShot, &pEntry);
+			} while (Process32Next(hSnapShot, &entry));
 		}
 		CloseHandle(hSnapShot);
 	}
 }
 
-void Autorestart::_usleep(int microseconds)
-{
-	std::this_thread::sleep_for(std::chrono::microseconds(microseconds));
-}
-void Autorestart::_sleep(int miliseconds)
-{
-	std::this_thread::sleep_for(std::chrono::milliseconds(miliseconds));
-}
-
 bool Autorestart::ValidateCookies()
 {
 	clear();
-	Log("Validating cookies...", "AutoRestart", true);
+	logger.print(LogLevel::Info, "Validating cookies...");
 
 	std::ifstream file("cookies.txt");
 	if (file.peek() == std::ifstream::traits_type::eof())
 	{
-		Log("Cookies.txt is empty", "AutoRestart", true);
+		logger.print(LogLevel::Error, "Cookies.txt is empty");
 		wait();
 		return false;
 	}
 
-	std::vector<std::string> cookies;
+	std::vector<std::string> local_cookies;
 	std::string line;
 	while (std::getline(file, line))
 	{
-		cookies.push_back(line);
+		local_cookies.push_back(line);
 	}
-	CookieCount = cookies.size();
 
-	for (auto& cookie : cookies)
+	for (auto& cookie : local_cookies)
 	{
-		long long index = std::distance(cookies.begin(), std::find(cookies.begin(), cookies.end(), cookie));
-
-		if (cookie.find("_|WARNING:") == std::string::npos || cookie.find("ROBUX") == std::string::npos)
+		long long index = std::distance(local_cookies.begin(), std::find(local_cookies.begin(), local_cookies.end(), cookie));
+		
+		std::regex pattern("_\\|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.\\|_");
+		if (!std::regex_search(cookie, pattern))
 		{
-			Log("A cookie in Cookies.txt is invalid, the first part of the cookie is either corrupted or missing.", "AutoRestart", true);
+			logger.print(LogLevel::Error, "A cookie in Cookies.txt is invalid, the first part of the cookie is either corrupted or missing.");
 			std::cout << "Invalid cookie on line: " << index + 1 << std::endl;
 			wait();
 			return false;
 		}
+		
 		if (cookie.find("\"") != std::string::npos)
 		{
-			Log("A cookie in Cookies.txt is invalid, it contains quotes.", "AutoRestart", true);
+			logger.print(LogLevel::Error, "A cookie in Cookies.txt is invalid, it contains quotes.");
 			std::cout << "Invalid cookie on line: " << index + 1 << std::endl;
 			wait();
 			return false;
@@ -146,125 +104,239 @@ bool Autorestart::ValidateCookies()
 	Request request("https://auth.roblox.com/v1/authentication-ticket");
 	request.initalize();
 
-	for (auto& cookie : cookies)
+	for (auto& cookie : local_cookies)
 	{
 		request.set_cookie(".ROBLOSECURITY", cookie);
 		request.set_header("Referer", "https://www.roblox.com/");
 		Response response = request.post();
 		std::string csrfToken = response.headers["x-csrf-token"];
 
-		long long index = std::distance(cookies.begin(), std::find(cookies.begin(), cookies.end(), cookie));
+		long long index = std::distance(local_cookies.begin(), std::find(local_cookies.begin(), local_cookies.end(), cookie));
 		if (csrfToken.empty())
 		{
-			Log("A cookie in Cookies.txt is invalid, or may also be expired", "AutoRestart", true);
-			std::cout << "Invalid cookie on line: " << index + 1 << std::endl;
+			std::string errorstr = "A cookie in Cookies.txt is invalid, or may also be expired. Invalid cookie on line: " + std::to_string(index + 1);
+			logger.print(LogLevel::Error, errorstr.c_str());
 			wait();
 			return false;
 		}
 	}
-	
-	cookies.size() == 1 ? Log("ze cookie is valid!", "AutoRestart", true) : Log("ze cookies are valid!", "AutoRestart", true);
+
+	cookies = local_cookies;
+
+	local_cookies.size() == 1 ? logger.print(LogLevel::Info, "Cookie is valid!") : logger.print(LogLevel::Info, "Cookies are valid!");
 
 	return true;
 }
 
-HANDLE Autorestart::GetHandleFromPID(DWORD pid)
+VOID CALLBACK WaitOrTimerCallback(PVOID lpParameter, BOOLEAN TimerOrWaitFired)
 {
-	return OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+	std::condition_variable* cv = static_cast<std::condition_variable*>(lpParameter);
+	cv->notify_all();
 }
 
-int Autorestart::GetInstanceCount()
+std::vector<DWORD> GetInstancePIDs()
 {
-	int count = 0;
-	WTS_PROCESS_INFO* pWPIs = NULL;
-	DWORD dwProcCount = 0;
-	if (WTSEnumerateProcesses(WTS_CURRENT_SERVER_HANDLE, NULL, 1, &pWPIs, &dwProcCount))
+	std::mutex m;
+	std::unique_lock<std::mutex> lk(m);
+
+	std::vector<DWORD> pidList;
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+	if (Process32First(snapshot, &entry) == TRUE)
 	{
-		for (DWORD i = 0; i < dwProcCount; i++)
+		while (Process32Next(snapshot, &entry) == TRUE)
 		{
-			std::string name = std::string(pWPIs[i].pProcessName);
-			if (name.find("RobloxPlayerBeta") != std::string::npos)
+			if (strcmp(entry.szExeFile, "RobloxPlayerBeta.exe") == 0)
 			{
-				HANDLE hProcess = GetHandleFromPID(pWPIs[i].ProcessId);
+				HANDLE hProcess = Functions::GetHandleFromPID(entry.th32ProcessID);
 				BOOL debugged = FALSE;
 				CheckRemoteDebuggerPresent(hProcess, &debugged);
-				debugged ? TerminateProcess(hProcess, 9) : count++; //this really shouldnt be here but whatever
+				if (debugged)
+				{
+					TerminateProcess(hProcess, 9);
+				}
+				else
+				{
+					pidList.push_back(entry.th32ProcessID);
+				}
 			}
 		}
 	}
-	if (pWPIs) { WTSFreeMemory(pWPIs); pWPIs = NULL; }
+
+	CloseHandle(snapshot);
+
+	return pidList;
+}
+
+bool Autorestart::RobloxProcessWatcher()
+{
+	while(!processwatcher_start)
+	{
+		std::this_thread::yield();
+	}
+
+	std::vector<DWORD> PIDs = GetInstancePIDs();
+	std::vector<HANDLE> hWaitObjects;
+	std::vector<HANDLE> hProcessHandles;
+	for (DWORD pid : PIDs)
+	{
+		HANDLE hProcess = Functions::GetHandleFromPID(pid);
+		hProcessHandles.push_back(hProcess);
+
+		HANDLE hWaitObject = NULL;
+		BOOL bSuccess = RegisterWaitForSingleObject(
+			&hWaitObject,
+			hProcess,
+			WaitOrTimerCallback,
+			&this->cv,
+			INFINITE,
+			WT_EXECUTEONLYONCE);
+		hWaitObjects.push_back(hWaitObject);
+	}
+
+	std::mutex m;
+	std::unique_lock<std::mutex> lock(m);
+	cv.wait(lock);
+
+	for (HANDLE hWaitObject : hWaitObjects)
+	{
+		UnregisterWaitEx(hWaitObject, NULL);
+	}
+
+	for (HANDLE hProcess : hProcessHandles)
+	{
+		CloseHandle(hProcess);
+	}
+
+	Error.store(true);
+
+	return true;
+}
+
+void fileWatcherCallback(void* param)
+{
+	std::condition_variable* cv = static_cast<std::condition_variable*>(param);
+
+	cv->notify_all();
+}
+
+int Autorestart::CountWindows(const TCHAR* name)
+{
+	int count = 0;
+	HWND hwnd = GetTopWindow(NULL);
+
+	while (hwnd != NULL)
+	{
+		TCHAR title[256];
+		GetWindowText(hwnd, title, sizeof(title));
+
+		if (_tcscmp(title, name) == 0)
+		{
+			count++;
+		}
+
+		hwnd = GetNextWindow(hwnd, GW_HWNDNEXT);
+	}
+
 	return count;
 }
 
-void Autorestart::WorkspaceWatcher()
-{ 
-	std::ifstream i("AutoRestartConfig.json");
-	json Config;
-	i >> Config;
-	
-	std::string Directory = Config["WorkspaceInteraction"]["Path"];
-	std::string FileName = Config["WorkspaceInteraction"]["FileName"];
-
-	while (true)
+bool Autorestart::RobloxWindowWatcher(const size_t& cookiesize)
+{
+	while (!windowwatcher_start)
 	{
-		while (!Ready)
-		{
-			std::this_thread::yield();
-		}
-
-		if (std::filesystem::exists(Directory + FileName) && Ready)
-		{
-			std::string Path = Directory + "\\" + FileName;
-			LPCSTR PathLPCSTR = Path.c_str();
-			DeleteFile(PathLPCSTR);
-			
-			Error.store(true);
-		}
-
-		Autorestart::_sleep(500);
+		std::this_thread::yield();
 	}
+
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+	
+	while (windowwatcher_start)
+	{
+		if (CountWindows(_T("Roblox")) < cookiesize)
+		{
+			logger.print(LogLevel::Info, "Roblox window count dropped below cookie count, restarting...");
+			Error.store(true);
+			break;
+		}
+
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+	}
+
+	return true;
 }
 
-
-void Autorestart::RobloxProcessWatcher()
+void Autorestart::FileWatcher(const std::string& path, const std::chrono::seconds& interval, bool& stop, void (*callback)(void*), void* context)
 {
-	while (true)
+	std::filesystem::path filePath(path);
+	std::filesystem::file_time_type lastWriteTime = std::filesystem::last_write_time(filePath);
+
+	while (!stop)
 	{
-		int stroke = 0;
-
-		while (!Ready) 
+		std::this_thread::sleep_for(interval);
+		if (std::filesystem::last_write_time(filePath) != lastWriteTime)
 		{
-			std::this_thread::yield();
-		}
+			lastWriteTime = std::filesystem::last_write_time(filePath);
+			std::ifstream file(filePath);
+			std::string line((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+			bool matchFound = false;
 
-		int tries = 0;
-		if (GetInstanceCount() < CookieCount)
-		{
-			while (tries == 30)
-			{
-				if (GetInstanceCount() == CookieCount)
+			for (const auto& regex : regexVec) {
+				if (std::regex_search(line, regex))
 				{
-					break;
-				}
-				tries++;
-				Autorestart::_sleep(1000);
-			}
-		}
-
-		while (true)
-		{
-			if (GetInstanceCount() < CookieCount && Ready)
-			{
-				stroke++;
-				if (stroke == 15)
-				{
-					Error.store(true);
-					break;
+					matchFound = true;
+					logger.print(LogLevel::Info, "Found a pattern in a log file");
 				}
 			}
-			Autorestart::_sleep(1000);
+
+			if (matchFound) break;
 		}
 	}
+
+	if (callback) callback(context);
+	return;
+}
+
+bool Autorestart::ErrorWactherRoutine()
+{
+	while(!errorwatcher_start)
+	{
+		std::this_thread::yield();
+	}
+
+	std::vector<DWORD> PIDs = GetInstancePIDs();
+	std::vector<std::string> Paths = Functions::GetPaths(PIDs);
+	
+	std::chrono::seconds interval(3);
+	//join-game-instance POST Body: {[^,]*
+	//SingleSurfaceAppImpl::returnToLuaApp: App not yet initialized, returning from game
+	//Default handler, teleport failed, with state
+
+
+	BS::thread_pool pool(Paths.size());
+
+	bool stop = false;
+	for (int i = 0; i < Paths.size(); i++)
+	{
+		pool.push_task(&Autorestart::FileWatcher, this, Paths[i], interval, std::ref(stop), fileWatcherCallback, &this->cv);
+	}
+
+	logger.print(LogLevel::Info, "started file watchers");
+
+	filewatcher_to_main_signal_cv.notify_all();
+	
+	std::mutex m;
+	std::unique_lock<std::mutex> lock(m);
+	cv.wait(lock);
+
+	stop = true;
+	pool.wait_for_tasks();
+
+	Error.store(true);
+	
+	return true;
 }
 
 void Autorestart::Start()
@@ -275,66 +347,42 @@ void Autorestart::Start()
 
 	int RestartTime = Config["Timer"];
 	
-	std::ifstream infile;
-	infile.open("cookies.txt");
-
-	std::vector<std::string> cookies;
-	std::string line;
-	while (std::getline(infile, line))
-	{
-		cookies.push_back(line);
-	}
-
 	std::string placeid = Config["PlaceID"].dump();
-	std::string vipurl;
-	bool vip = false;
-	
-	if (Config["vip"]["Enabled"]) vipurl = Config["vip"]["url"];
-
 	if (placeid.empty())
 	{
-		std::cout << "PlaceID is empty" << std::endl;
+		logger.print(LogLevel::Error, "PlaceID is empty");
 		wait();
 		return;
 	}
-
-	std::string LinkCode, AccessCode;
-	if (Config["vip"]["Enabled"] && !vipurl.empty())
+	
+	std::string vipurl;
+	VIPServer vipserver;
+	bool vip = false;
+	if (Config["vip"]["Enabled"])
 	{
-		LinkCode = vipurl.substr(vipurl.find("=") + 1);
+		vipurl = Config["vip"]["url"];
 
-		Request csrf("https://auth.roblox.com/v1/authentication-ticket");
-		csrf.set_cookie(".ROBLOSECURITY", cookies[0]);
-		csrf.set_header("Referer", "https://www.roblox.com/");
-		csrf.initalize();
-		Response res = csrf.post();
-
-		std::string csrfToken = res.headers["x-csrf-token"];
-
-		Request accesscode(vipurl);
-		accesscode.set_cookie(".ROBLOSECURITY", cookies[0]);
-		accesscode.set_header("x-csrf-token", csrfToken);
-		accesscode.set_header("Referer", "https://www.roblox.com/");
-		accesscode.initalize();
-		Response res2 = accesscode.get();
-
-		std::regex regex("joinPrivateGame\\(\\d+\\, '(\\w+\\-\\w+\\-\\w+\\-\\w+\\-\\w+)");
-		std::smatch match;
-		std::regex_search(res2.data, match, regex);
-		AccessCode = match[1];
-
+		if (vipurl.empty())
+		{
+			logger.print(LogLevel::Error, "VIP URL is empty");
+			wait();
+			return;
+		}
+		
+		vipserver = getVIPServer(vipurl, cookies[0]);
 		vip = true;
 	}
-	
-	
-	std::thread RobloxProcessWatcherThread;
-	std::thread WorkspaceWatcherThread;
-	if (Config["Watchdog"]) RobloxProcessWatcherThread = std::thread(&Autorestart::RobloxProcessWatcher, this);
-	if (Config["WorkspaceInteraction"]["Enabled"]) WorkspaceWatcherThread = std::thread(&Autorestart::WorkspaceWatcher, this);
-	
+
 	while (true)
 	{
-		Log("Launching Roblox", "AutoRestart", true);
+		UnlockRoblox();
+
+		BS::thread_pool pool;
+		std::future<bool> WatcherFuture = pool.submit(&Autorestart::RobloxProcessWatcher, this);
+		std::future<bool> ErrorFuture = pool.submit(&Autorestart::ErrorWactherRoutine, this);
+		std::future<bool> WindowFuture = pool.submit(&Autorestart::RobloxWindowWatcher, this, cookies.size());
+		
+		logger.print(LogLevel::Info, "Launching Roblox");
 
 		bool sameserver = Config["SameServer"];
 		std::string JobID;
@@ -343,40 +391,31 @@ void Autorestart::Start()
 		{
 			try
 			{
-				JobID = GetSmallestJobID(Config["PlaceID"], cookies[0]);
+				JobID = GetSmallestJobID(Config["PlaceID"], cookies[0], cookies.size());
 			}
 			catch (std::exception& e)
 			{
-				Log("Failed to get JobID, defaulting to normal", LOG_WARNING, true);
+				std::string errorstr = "Failed to get JobID, defaulting to normal" + std::string(e.what());
+				logger.print(LogLevel::Warning, errorstr.c_str());
 				sameserver = false;
 			}
 		}
 		
 		for (int i = 0; i < cookies.size(); i++)
 		{
-			UnlockRoblox();
-
 			std::string authticket = getRobloxTicket(cookies[i]);
 
-			std::string path;
-
-			char value[255];
-			DWORD BufferSize = 8192;
-			RegGetValue(HKEY_CLASSES_ROOT, "roblox-player\\shell\\open\\command", "", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-			path = value;
-			path = path.substr(1, path.length() - 5);
+			std::string path = getRobloxPath();
 
 			srand((unsigned int)time(NULL));
+			std::string browserTrackerID = std::to_string(rand() % 100000 + 100000);
 
-			std::string randomnumber = std::to_string(rand() % 100000 + 100000);
-			std::string randomnumber2 = std::to_string(rand() % 100000 + 100000);
 			std::string unixtime = std::to_string(std::time(nullptr));
-			std::string browserTrackerID = randomnumber + randomnumber2;
 
 			std::string cmd;
 			if (vip)
 			{
-				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + placeid + "%26accessCode%3D" + AccessCode + "%26linkCode%3D" + LinkCode + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
+				cmd = '"' + path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + placeid + "%26accessCode%3D" + vipserver.AccessCode + "%26linkCode%3D" + vipserver.LinkCode + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
 			}
 			else if (sameserver)
 			{
@@ -392,26 +431,38 @@ void Autorestart::Start()
 			PROCESS_INFORMATION pi = {};
 			if (!CreateProcess(&path[0], &cmd[0], NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
 			{
-				Log("CreateProcess() failed: " + GetLastError(), LOG_FATAL);
-				return;
+				std::string errorstr = "CreateProcess() failed: " + std::to_string(GetLastError());
+				logger.print(LogLevel::Fatal, errorstr.c_str());
 			}
 			WaitForSingleObject(pi.hProcess, INFINITE);
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
+			Functions::_usleep(5000);
 		}
+		
+		logger.print(LogLevel::Info, "Instances Launched");
+		Functions::_sleep(10000);
+	
+		bool forceminimize = Config["ForceMinimize"];
 
 		auto start = std::chrono::steady_clock::now();
-		
-		Ready = true;
 
-		Log("Restarting in", "AutoRestart", false);
+		windowwatcher_start = true;
+		errorwatcher_start = true;
+		processwatcher_start = true;
+
+		std::mutex mutex;
+		std::unique_lock<std::mutex> lock(mutex);
+		filewatcher_to_main_signal_cv.wait(lock);
+
+		std::cout << "Restarting in ";
 		while (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() < RestartTime)
 		{
 			std::string timeleftstr = std::to_string(RestartTime - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count());
 
 			std::cout << timeleftstr << " minutes";
 
-			if (Config["ForceMinimize"] && FindWindow(NULL, "Roblox"))
+			if (forceminimize && FindWindow(NULL, "Roblox"))
 			{
 				for (int i = 0; i < cookies.size(); i++)
 				{
@@ -428,26 +479,39 @@ void Autorestart::Start()
 			if (FindWindow(NULL, "Authentication Failed") || FindWindow(NULL, "Synapse X - Crash Reporter") || FindWindow(NULL, "ROBLOX Crash") || FindWindow(NULL, "Roblox Crash"))
 			{
 				HWND hWnd = FindWindow(NULL, "Authentication Failed");
-				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Synapse X - Crash Reporter");
-				if (hWnd == NULL)				hWnd = FindWindow(NULL, "ROBLOX Crash");
-				if (hWnd == NULL)				hWnd = FindWindow(NULL, "Roblox Crash");
-				if (hWnd != NULL)				SendMessage(hWnd, WM_CLOSE, 0, 0);
+				if (hWnd == NULL)	hWnd = FindWindow(NULL, "Synapse X - Crash Reporter");
+				if (hWnd == NULL)	hWnd = FindWindow(NULL, "ROBLOX Crash");
+				if (hWnd == NULL)	hWnd = FindWindow(NULL, "Roblox Crash");
+				if (hWnd != NULL)	SendMessage(hWnd, WM_CLOSE, 0, 0);
 				
 				break;
 			}
 
 			std::cout << std::string(timeleftstr.length() + 8, '\b');
 			
-			_usleep(5000);
+			Functions::_usleep(5000);
 		}
-		Ready = false;
-		Error.store(false);
+		cv.notify_all();
+
 		KillRoblox();
 		
+		logger.print(LogLevel::Info, "waiting for thread to join");
+		WindowFuture.wait();
+		WatcherFuture.wait();
+		ErrorFuture.wait();
+		logger.print(LogLevel::Info, "thread joined");
+		windowwatcher_start = false;
+		errorwatcher_start = false;
+		processwatcher_start = false;
+		Error.store(false);
+		logger.print(LogLevel::Info, "Flags set");
+
 		if (Config["WaitTimeAfterRestart"] != 0)
 		{
-			Log("Waiting for " + Config["WaitTimeAfterRestart"].dump() + " millieseconds" , "AutoRestart", true);
-			Autorestart::_sleep(Config["WaitTimeAfterRestart"]);
+			logger.print(LogLevel::Info, "Waiting for " + std::to_string(Config["WaitTimeAfterRestart"].get<int>()) + " millieseconds");
+			Functions::_sleep(Config["WaitTimeAfterRestart"]);
 		}
+
+		logger.print(LogLevel::Info, "Restarting");
 	}
 }
