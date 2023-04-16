@@ -8,6 +8,10 @@
 class Timer
 {
 public:
+    using Clock = std::chrono::steady_clock;
+    using Minutes = std::chrono::minutes;
+    using Seconds = std::chrono::seconds;
+
     Timer() = default;
     ~Timer() = default;
 
@@ -33,16 +37,16 @@ public:
         isDone.store(false, std::memory_order_relaxed);
         stopTimer.store(false, std::memory_order_relaxed);
         std::cout << "Restarting in ";
-        auto start = std::chrono::steady_clock::now();
-        while (!stopTimer.load(std::memory_order_relaxed) && std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count() < restartTime.load(std::memory_order_relaxed))
+        auto start = Clock::now();
+        while (!stopTimer.load(std::memory_order_relaxed) && std::chrono::duration_cast<Minutes>(Clock::now() - start).count() < restartTime.load(std::memory_order_relaxed))
         {
-            std::string timeleftstr = std::to_string(restartTime.load(std::memory_order_relaxed) - std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start).count());
+            std::string timeleftstr = std::to_string(restartTime.load(std::memory_order_relaxed) - std::chrono::duration_cast<Minutes>(Clock::now() - start).count());
 
             std::cout << timeleftstr << " minutes";
 
             std::cout << std::string(timeleftstr.length() + 8, '\b');
 
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(Seconds(1));
         }
         isDone.store(true, std::memory_order_relaxed);
     }

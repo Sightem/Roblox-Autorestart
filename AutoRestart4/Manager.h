@@ -1,17 +1,16 @@
 #pragma once
-#include "json.hpp"
+#include "taskqueue.hpp"
 #include "logger.hpp"
 #include "timer.hpp"
-#include "taskqueue.hpp"
+#include "json.hpp"
 
-
-#include <thread>
-#include <shared_mutex>
 #include <condition_variable>
-#include <fstream>
-#include <set>
-#include <regex>
+#include <shared_mutex>
 #include <Windows.h>
+#include <fstream>
+#include <thread>
+#include <regex>
+#include <set>
 
 struct GameJob
 {
@@ -54,23 +53,23 @@ public:
         return *this;
     }
     
-    void launchRoblox();
-    void handleMessage(Message& message);
-    bool terminateRoblox();
-    void getVIPServerInfo();
-
-    void init();
-
-    std::string getRobloxTicket();
-    std::string getUsername();
-    std::string getCSRF();
-    std::string GetSmallestJobID();
-    static std::string getJobIDString();
     static void setJobIDString(const std::string& value);
+    void HandleMessage(Message& message);
+    void LaunchRoblox();
+    void GetVIPServerInfo();
+    void Init();
+
+    bool TerminateRoblox();
+
+    static std::string GetJobIDString();
+    std::string GetRobloxTicket();
+    std::string GetUsername();
+    std::string GetCSRF();
+    std::string GetSmallestJobID();
 
 
-    DWORD getRobloxPID();
-    std::set<DWORD> getRobloxInstances();
+    DWORD GetRobloxPID();
+    std::set<DWORD> GetRobloxInstances();
 
 private:
     DWORD pid;

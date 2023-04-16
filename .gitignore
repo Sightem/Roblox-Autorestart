@@ -368,3 +368,5 @@ FodyWeavers.xsd
 /Autorestart/AutoRestartConfig.json
 /Autorestart/Program.exe
 /Autorestart/ramdecr.exe
+/AutoRestart4/config.json
+/AutoRestart4/cookies.txt

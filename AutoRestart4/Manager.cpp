@@ -13,7 +13,7 @@
 std::string Manager::job_id;
 std::mutex Manager::shared_string_mutex;
 
-std::string Manager::getJobIDString()
+std::string Manager::GetJobIDString()
 {
     std::scoped_lock<std::mutex> lock(shared_string_mutex);
     std::string value = job_id;
@@ -26,7 +26,7 @@ void Manager::setJobIDString(const std::string& value)
     job_id = value;
 }
 
-std::string Manager::getRobloxTicket()
+std::string Manager::GetRobloxTicket()
 {
     Request req("https://auth.roblox.com/v1/authentication-ticket");
     req.set_cookie(".ROBLOSECURITY", cookie);
@@ -41,7 +41,7 @@ std::string Manager::getRobloxTicket()
     return ticket;
 }
 
-std::string Manager::getUsername()
+std::string Manager::GetUsername()
 {
     Request req("https://users.roblox.com/v1/users/authenticated");
     req.set_cookie(".ROBLOSECURITY", cookie);
@@ -66,32 +66,30 @@ std::string Manager::getUsername()
 	}
 }
 
-DWORD Manager::getRobloxPID()
+DWORD Manager::GetRobloxPID()
 {
-    std::set<DWORD> pidList = getRobloxInstances();
+    std::set<DWORD> pidList = GetRobloxInstances();
 
     if (pidList.size() == 0)
     {
         return 0;
 	}
     
-    //iterate over the pid list and get the log files for each pid
-    std::vector<std::string> logFiles = Functions::getLogFiles();
+    std::vector<std::string> logFiles = Native::GetLogFiles();
 
-    //search the logfiles for the pattern UserName%22%3a%22([A-z]+) and compare against cookie_username, if it matches then return the pid
     for (const auto& file : logFiles)
     {
-        std::string username = Functions::searchFileForPattern(file, R"(UserName%22%3a%22(.*?)%)");
+        std::string username = FS::SearchFileForPattern(file, R"(UserName%22%3a%22(.*?)%)");
         if (username == cookie_username)
         {
             roblox_log_path = file;
-            return Functions::GetProcessIDOfFileOpener(file);
+            return Native::GetProcessIDOfFileOpener(file);
 		}
 	}
 	return 0;
 }
 
-std::set<DWORD> Manager::getRobloxInstances()
+std::set<DWORD> Manager::GetRobloxInstances()
 {
     std::set<DWORD> pidSet;
     PROCESSENTRY32 entry;
@@ -126,7 +124,7 @@ std::set<DWORD> Manager::getRobloxInstances()
     return pidSet;
 }
 
-void Manager::getVIPServerInfo()
+void Manager::GetVIPServerInfo()
 {
     const Autorestart* restart = static_cast<const Autorestart*>(autorestart_ptr);
 
@@ -137,7 +135,7 @@ void Manager::getVIPServerInfo()
     return;
 }
 
-std::string Manager::getCSRF()
+std::string Manager::GetCSRF()
 {
     Request req("https://auth.roblox.com/v1/authentication-ticket");
     req.set_cookie(".ROBLOSECURITY", cookie);
@@ -202,38 +200,38 @@ std::string Manager::GetSmallestJobID()
 }
 
 
-void Manager::init()
+void Manager::Init()
 {
     const Autorestart* restart = static_cast<const Autorestart*>(autorestart_ptr);
 
-    this->csrf = getCSRF();
+    this->csrf = GetCSRF();
 
-    this->cookie_username = getUsername();
+    this->cookie_username = GetUsername();
     if (cookie_username == "")
     {
 		logger->log("Failed to get username from cookie, sleeping for 5 minutes to attempt recover...", ERR, "MANAGER", true);
         std::this_thread::sleep_for(std::chrono::minutes(5));
-		init();
+		Init();
 	}
 
     if (restart->launch_vip)
     {
-        getVIPServerInfo();
+        GetVIPServerInfo();
     }
 
-    launchRoblox();
+    LaunchRoblox();
 }
 
-void Manager::launchRoblox()
+void Manager::LaunchRoblox()
 {
     Autorestart* restart = (Autorestart*)autorestart_ptr;
 
-    std::string authticket = getRobloxTicket();
+    std::string authticket = GetRobloxTicket();
 
     std::string browserTrackerID = "167200211022";
 
     std::string cmd;
-    if (restart->launch_sameserver && getJobIDString().empty())
+    if (restart->launch_sameserver && GetJobIDString().empty())
     {
         try
         {
@@ -241,8 +239,6 @@ void Manager::launchRoblox()
         }
         catch (std::exception& e)
         {
-            //std::string errorstr = "Failed to get JobID, defaulting to normal" + std::string(e.what());
-            //logger.print(LogLevel::Warning, errorstr.c_str());
             logger->log("Failed to get JobID, defaulting to normal" + std::string(e.what()), WARNING, "MANAGER", true);
 
             restart->launch_sameserver = false;
@@ -278,7 +274,7 @@ void Manager::launchRoblox()
     if (wait != WAIT_OBJECT_0)
     {
 		logger->log("Roblox failed to launch within 2 minutes", ERR, "MANAGER", true);
-        Functions::TerminateProcessTree(pi.dwProcessId, 9);
+        Native::TerminateProcessTree(pi.dwProcessId, 9);
 
         pid = 0;
         return;
@@ -290,7 +286,7 @@ void Manager::launchRoblox()
     int attempt_count = 0;
     for (int i = 0; i < 20; i++)
     {
-		pid = getRobloxPID();
+		pid = GetRobloxPID();
         if (pid != 0)
         {
 			break;
@@ -307,7 +303,7 @@ void Manager::launchRoblox()
     return;
 }
 
-void Manager::handleMessage(Message& message)
+void Manager::HandleMessage(Message& message)
 {
     const Autorestart* restart = static_cast<const Autorestart*>(autorestart_ptr);
 
@@ -321,7 +317,7 @@ void Manager::handleMessage(Message& message)
         }
         case MessageType::CHECK_ROBLOX:
         {
-            bool roblox_running = Functions::checkProcessExists(pid, "RobloxPlayerBeta.exe");
+            bool roblox_running = Native::CheckProcessExists(pid, "RobloxPlayerBeta.exe");
             if (!roblox_running)
             {
                 roblox_log_path = "";
@@ -334,14 +330,14 @@ void Manager::handleMessage(Message& message)
         {
             std::scoped_lock<std::mutex> lock(regex_mutex);
 
-            std::string fileContents = Functions::readEntireFile(roblox_log_path);
+            std::string fileContents = FS::ReadEntireFile(roblox_log_path);
 
             std::vector<std::future<bool>> futures;
 
             for (const auto& pattern : restart->patterns)
             {
                 futures.push_back(std::async(std::launch::async, [&fileContents, &pattern]() {
-                    return !Functions::searchStringForPattern(fileContents, pattern).empty();
+                    return !FS::SearchStringForPattern(fileContents, pattern).empty();
                     }));
             }
 
@@ -364,18 +360,18 @@ void Manager::handleMessage(Message& message)
             if (hWnd != NULL)
             {
                 SendMessage(hWnd, WM_CLOSE, 0, 0);
-                terminateRoblox();
+                TerminateRoblox();
             }
         }
         case MessageType::UPDATE_CSRF:
         {
-            this->csrf = getCSRF();
+            this->csrf = GetCSRF();
             break;
         }
     }
 }
 
-bool Manager::terminateRoblox()
+bool Manager::TerminateRoblox()
 {
     HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
     if (hProcess == NULL) 

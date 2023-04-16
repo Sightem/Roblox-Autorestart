@@ -131,19 +131,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Autorestart.cpp" />
+    <ClCompile Include="autorestart.cpp" />
     <ClCompile Include="functions.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Manager.cpp" />
+    <ClCompile Include="manager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Autorestart.h" />
+    <ClInclude Include="autorestart.h" />
     <ClInclude Include="functions.h" />
     <ClInclude Include="json.hpp" />
-    <ClInclude Include="Lhf.h" />
+    <ClInclude Include="lhf.h" />
     <ClInclude Include="logger.hpp" />
-    <ClInclude Include="Manager.h" />
-    <ClInclude Include="Native.h" />
+    <ClInclude Include="manager.h" />
+    <ClInclude Include="native.h" />
     <ClInclude Include="request.hpp" />
     <ClInclude Include="taskqueue.hpp" />
     <ClInclude Include="timer.hpp" />

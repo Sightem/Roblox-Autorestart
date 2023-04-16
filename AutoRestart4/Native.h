@@ -669,11 +669,7 @@ struct IO_STATUS_BLOCK
 
 
 _NtQueryInformationThread NtQueryInformationThread = (_NtQueryInformationThread)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQueryInformationThread");
-_NtQueryInformationProcess NtQueryInformationProcess =
-(_NtQueryInformationProcess)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQueryInformationProcess");
-_NtQuerySystemInformation NtQuerySystemInformation =
-(_NtQuerySystemInformation)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQuerySystemInformation");
-_NtDuplicateObject NtDuplicateObject =
-(_NtDuplicateObject)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtDuplicateObject");
-_NtQueryObject NtQueryObject =
-(_NtQueryObject)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQueryObject");
+_NtQueryInformationProcess NtQueryInformationProcess = (_NtQueryInformationProcess)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQueryInformationProcess");
+_NtQuerySystemInformation NtQuerySystemInformation = (_NtQuerySystemInformation)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQuerySystemInformation");
+_NtDuplicateObject NtDuplicateObject = (_NtDuplicateObject)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtDuplicateObject");
+_NtQueryObject NtQueryObject = (_NtQueryObject)GetProcAddress(GetModuleHandle("ntdll.dll"), "NtQueryObject");

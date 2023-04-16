@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <filesystem>
 
-bool Autorestart::readCookies()
+bool Autorestart::ReadCookies()
 {
 	logger.log("Reading cookies from file...", INFO, "AUTORESTART", true);
 
@@ -28,7 +28,7 @@ bool Autorestart::readCookies()
 	return true;
 }
 
-bool Autorestart::validateCookies()
+bool Autorestart::ValidateCookies()
 {
 	logger.log("Validating cookies...", INFO, "AUTORESTART", true);
 
@@ -52,7 +52,7 @@ bool Autorestart::validateCookies()
 	if (!allCookiesValid)
 	{
 		logger.log("Cookies are invalid, please fix them and try again.", ERR, "AUTORESTART", true);
-		Functions::wait();
+		Terminal::wait();
 		return false;
 	}
 
@@ -82,7 +82,7 @@ bool Autorestart::validateCookies()
 	return allCookiesValid;
 }
 
-void Autorestart::createLogsDirectoryIfNeeded()
+void Autorestart::CreateLogsDirectoryIfNeeded()
 {
 	if (!std::filesystem::exists("logs"))
 	{
@@ -94,20 +94,20 @@ void Autorestart::createLogsDirectoryIfNeeded()
 	}
 }
 
-std::string Autorestart::generateLogfilePath()
+std::string Autorestart::GenerateLogFilePath()
 {
 	std::string fileName = "Autorestart-log";
 	const std::string fileExtension = ".txt";
-	std::string timestamp = Functions::getCurrentTimestamp();
+	std::string timestamp = FS::GetCurrentTimestamp();
 	std::string path = "logs/" + fileName + "-" + timestamp + fileExtension;
 	return path;
 }
 
-std::string Autorestart::ensureLogfile()
+std::string Autorestart::EnsureLogfile()
 {
-	createLogsDirectoryIfNeeded();
+	CreateLogsDirectoryIfNeeded();
 
-	std::string path = generateLogfilePath();
+	std::string path = GenerateLogFilePath();
 
 	std::ofstream logfile(path, std::ios::out | std::ios::trunc);
 	if (!logfile.is_open())
@@ -120,16 +120,13 @@ std::string Autorestart::ensureLogfile()
 	return path;
 }
 
-void Autorestart::unlockRoblox()
+void Autorestart::UnlockRoblox()
 {
 	CreateMutex(NULL, TRUE, "ROBLOX_singletonMutex");
 }
 
-bool Autorestart::handleProblematicManagers(const std::vector<size_t>& problematic_managers)
+bool Autorestart::HandleProblematicManagers(const std::vector<size_t>& problematic_managers)
 {
-	//bool restart_broken_only = config["RestartBrokenOnly"];
-	//bool timer_enabled = config["Timer"]["Enabled"];
-
 	if (problematic_managers.size() == managers.size() && timer_enabled)
 	{
 		logger.log("All instances were broken, restarting all", INFO, "SCHEDULER", true);
@@ -143,15 +140,15 @@ bool Autorestart::handleProblematicManagers(const std::vector<size_t>& problemat
 		{
 			logger.log(std::to_string(problematic_managers.size()) + " instances were broken, restarting the instances", INFO, "SCHEDULER", true);
 			manager.setJobIDString("");
-			manager.terminateRoblox();
-			manager.launchRoblox();
+			manager.TerminateRoblox();
+			manager.LaunchRoblox();
 		}
 	}
 
 	return false;
 }
 
-std::vector<size_t> Autorestart::checkManagersForProblems()
+std::vector<size_t> Autorestart::CheckManagersForProblems()
 {
 	std::vector<size_t> problematic_managers;
 	Message message = this->message_queue.top();
@@ -160,14 +157,14 @@ std::vector<size_t> Autorestart::checkManagersForProblems()
 	for (size_t i = 0; i < this->managers.size(); ++i)
 	{
 		Manager& manager = managers[i];
-		manager.handleMessage(message);
+		manager.HandleMessage(message);
 		if (message.type == MessageType::CHECK_ROBLOX && message.output.has_value() && !message.output.value())
 		{
 			problematic_managers.push_back(i);
 		}
 		else if (message.type == MessageType::CHECK_ERROR && message.output.has_value() && message.output.value())
 		{
-			manager.terminateRoblox();
+			manager.TerminateRoblox();
 			problematic_managers.push_back(i);
 		}
 	}
@@ -175,24 +172,24 @@ std::vector<size_t> Autorestart::checkManagersForProblems()
 	return problematic_managers;
 }
 
-void Autorestart::enqueueMessages()
+void Autorestart::EnqueueMessages()
 {
 	this->message_queue.push(Message(MessageType::CHECK_ROBLOX, "", 1));
 	this->message_queue.push(Message(MessageType::CHECK_ERROR, "", 1));
 	this->message_queue.push(Message(MessageType::CHECK_SYNAPSE, "", 1));
 }
 
-void Autorestart::updateCSRF()
+void Autorestart::UpdateCSRF()
 {
 	logger.log("Updating CSRF", INFO, "SCHEDULER", true);
 	Message message(MessageType::UPDATE_CSRF, "", 2);
 	for (auto& manager : this->managers)
 	{
-		manager.handleMessage(message);
+		manager.HandleMessage(message);
 	}
 }
 
-void Autorestart::scheduler()
+void Autorestart::Scheduler()
 {
 	last_csrf_update = std::chrono::steady_clock::now();
 
@@ -200,20 +197,20 @@ void Autorestart::scheduler()
 	{
 		if (!this->message_queue.empty())
 		{
-			auto problematic_managers = checkManagersForProblems();
-			if (handleProblematicManagers(problematic_managers))
+			auto problematic_managers = CheckManagersForProblems();
+			if (HandleProblematicManagers(problematic_managers))
 			{
 				break;
 			}
 		}
 		else if (!terminate_scheduler)
 		{
-			enqueueMessages();
+			EnqueueMessages();
 		}
 
 		if (std::chrono::steady_clock::now() - last_csrf_update >= csrf_update_interval)
 		{
-			updateCSRF();
+			UpdateCSRF();
 			last_csrf_update = std::chrono::steady_clock::now();
 		}
 
@@ -223,7 +220,7 @@ void Autorestart::scheduler()
 	return;
 }
 
-bool Autorestart::cookiesExists()
+bool Autorestart::CookiesExists()
 {
 	if (std::filesystem::exists("cookies.txt"))
 	{
@@ -238,10 +235,10 @@ bool Autorestart::cookiesExists()
 	}
 }
 
-void Autorestart::init()
+void Autorestart::Init()
 {
 	//-- Initialize logger
-	logger.setLogFile(ensureLogfile());
+	logger.setLogFile(EnsureLogfile());
 	logger.log("Initializing...", INFO, "AUTORESTART", true);
 
 	//-- Set config values
@@ -252,16 +249,16 @@ void Autorestart::init()
 		place_id = config->at("PlaceID");
 		launch_vip = config->at("vip").at("Enabled");
 		launch_sameserver = config->at("SameServer");
-		roblox_exe_path = Functions::getRobloxPath();
+		roblox_exe_path = FS::GetRobloxPath();
 		patterns = config->at("ErrorPatterns");
 	}
 
 	//-- Read cookies
-	if (cookiesExists() && readCookies())
+	if (CookiesExists() && ReadCookies())
 	{
 		logger.log("Read cookies successfully", INFO, "AUTORESTART", true);
 		
-		if (!validateCookies())
+		if (!ValidateCookies())
 			return;
 	}
 	else
@@ -273,18 +270,18 @@ void Autorestart::init()
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 
-		Functions::wait();
+		Terminal::wait();
 		return;
 	}
 
 	//-- Check if roblox is running
-	std::string exe_name = Functions::extractExeName(Functions::getRobloxPath());
-	if (Functions::IsProcessRunning("RobloxPlayerBeta.exe") || Functions::IsProcessRunning(exe_name))
+	std::string exe_name = FS::ExtractExeName(FS::GetRobloxPath());
+	if (Native::IsProcessRunning("RobloxPlayerBeta.exe") || Native::IsProcessRunning(exe_name))
 	{
 		logger.log("Roblox is running, closing it...", WARNING, "AUTORESTART", true);
 
-		Functions::TerminateProcessesByName("RobloxPlayerBeta.exe");
-		Functions::TerminateProcessesByName(exe_name);
+		Native::TerminateProcessesByName("RobloxPlayerBeta.exe");
+		Native::TerminateProcessesByName(exe_name);
 
 		logger.log("Roblox closed successfully! waiting for 5 seconds for roblox to complete it's clean up...", WARNING, "AUTORESTART", true);
 		std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -307,14 +304,14 @@ void Autorestart::init()
 
 		for (auto& manager : managers)
 		{
-			unlockRoblox();
-			manager.init();
+			UnlockRoblox();
+			manager.Init();
 		}
 
 		if (timer_enabled)
 		{
 			terminate_scheduler = false;
-			scheduler_thread = std::thread(&Autorestart::scheduler, this);
+			scheduler_thread = std::thread(&Autorestart::Scheduler, this);
 
 			timer.setRestartTimer(config->at("Timer").at("Time").get<int>());
 			timer.run();
@@ -322,7 +319,7 @@ void Autorestart::init()
 		else
 		{
 			logger.log("Timer is disabled, starting scheduler...", INFO, "AUTORESTART", true);
-			scheduler();
+			Scheduler();
 		}
 
 		terminate_scheduler = true;
@@ -336,12 +333,12 @@ void Autorestart::init()
 		//-- Terminate all managers
 		for (auto& manager : managers)
 		{
-			manager.terminateRoblox();
+			manager.TerminateRoblox();
 		}
 
 		//-- Just in case
-		Functions::TerminateProcessesByName("RobloxPlayerBeta.exe");
-		Functions::TerminateProcessesByName(exe_name);
+		Native::TerminateProcessesByName("RobloxPlayerBeta.exe");
+		Native::TerminateProcessesByName(exe_name);
 
 		//-- Clean up managers
 		managers.clear();

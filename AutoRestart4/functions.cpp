@@ -10,8 +10,10 @@
 #include <lmcons.h>
 
 #pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "Psapi.lib")
+#pragma comment(lib, "Rstrtmgr.lib")
 
-DWORD Functions::GetProcessIDOfFileOpener(const std::string& path)
+DWORD Native::GetProcessIDOfFileOpener(const std::string& path)
 {
     std::wstring wpath(path.begin(), path.end());
     WCHAR* wpath2 = (WCHAR*)wpath.c_str();
@@ -40,7 +42,7 @@ DWORD Functions::GetProcessIDOfFileOpener(const std::string& path)
     }
 }
 
-bool Functions::checkProcessExists(DWORD pid, const std::string& processName)
+bool Native::CheckProcessExists(DWORD pid, const std::string& processName)
 {
     bool processExists = false;
     PROCESSENTRY32 processEntry;
@@ -74,7 +76,7 @@ bool Functions::checkProcessExists(DWORD pid, const std::string& processName)
     return processExists;
 }
 
-std::string Functions::searchFileForPattern(const std::string& filePath, const std::string& pattern)
+std::string FS::SearchFileForPattern(const std::string& filePath, const std::string& pattern)
 {
     std::ifstream file(filePath);
     std::string line;
@@ -96,7 +98,7 @@ std::string Functions::searchFileForPattern(const std::string& filePath, const s
     return "";
 }
 
-bool Functions::TerminateProcessesByName(const std::string& processName) 
+bool Native::TerminateProcessesByName(const std::string& processName) 
 {
     bool success = true;
 
@@ -133,18 +135,23 @@ bool Functions::TerminateProcessesByName(const std::string& processName)
     return success;
 }
 
-bool Functions::IsProcessRunning(const std::string& processName) {
+bool Native::IsProcessRunning(const std::string& processName) 
+{
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE) {
+    if (snapshot == INVALID_HANDLE_VALUE)
+    {
         return false;
     }
 
     PROCESSENTRY32 processEntry;
     processEntry.dwSize = sizeof(PROCESSENTRY32);
 
-    if (Process32First(snapshot, &processEntry)) {
-        do {
-            if (strcmp(processEntry.szExeFile, processName.c_str()) == 0) {
+    if (Process32First(snapshot, &processEntry)) 
+    {
+        do 
+        {
+            if (strcmp(processEntry.szExeFile, processName.c_str()) == 0) 
+            {
                 CloseHandle(snapshot);
                 return true;
             }
@@ -155,10 +162,11 @@ bool Functions::IsProcessRunning(const std::string& processName) {
     return false;
 }
 
-std::string Functions::readEntireFile(const std::string& filePath)
+std::string FS::ReadEntireFile(const std::string& filePath)
 {
     std::ifstream file(filePath, std::ios::in | std::ios::binary);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         std::cerr << "Error opening file: " << filePath << std::endl;
         return "";
     }
@@ -170,17 +178,18 @@ std::string Functions::readEntireFile(const std::string& filePath)
     return contents.str();
 }
 
-std::string Functions::searchStringForPattern(const std::string& str, const std::string& pattern)
+std::string FS::SearchStringForPattern(const std::string& str, const std::string& pattern)
 {
 	std::regex regexPattern(pattern);
 	std::smatch match;
-    if (std::regex_search(str, match, regexPattern)) {
+    if (std::regex_search(str, match, regexPattern))
+    {
 		return match[1].str();
 	}
 	return "";
 }
 
-std::string Functions::extractExeName(const std::string& path)
+std::string FS::ExtractExeName(const std::string& path)
 {
     std::regex exe_regex(R"(([\w\d_]+\.exe))", std::regex_constants::icase);
     std::smatch exe_match;
@@ -195,7 +204,7 @@ std::string Functions::extractExeName(const std::string& path)
     }
 }
 
-std::string Functions::getRobloxPath()
+std::string FS::GetRobloxPath()
 {
     std::string path;
 
@@ -208,7 +217,7 @@ std::string Functions::getRobloxPath()
     return path;
 }
 
-std::string Functions::getCurrentTimestamp()
+std::string FS::GetCurrentTimestamp()
 {
     auto now = std::chrono::system_clock::now();
     auto now_time_t = std::chrono::system_clock::to_time_t(now);
@@ -217,7 +226,7 @@ std::string Functions::getCurrentTimestamp()
     return timestamp.str();
 }
 
-bool Functions::TerminateProcessTree(DWORD dwProcessId, UINT uExitCode)
+bool Native::TerminateProcessTree(DWORD dwProcessId, UINT uExitCode)
 {
     PROCESSENTRY32 pe;
     HANDLE hProcessSnap;
@@ -261,7 +270,7 @@ bool Functions::TerminateProcessTree(DWORD dwProcessId, UINT uExitCode)
     return true;
 }
 
-void Functions::flushConsole()
+void Terminal::FlushConsole()
 {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -282,11 +291,12 @@ void Functions::flushConsole()
     SetConsoleCursorPosition(hConsole, { 0, 0 });
 }
 
-void Functions::wait()
+void Terminal::wait()
 {
     std::cout << "Press any key to continue..." << std::endl;
 
-    while (_kbhit()) {
+    while (_kbhit()) 
+    {
         _getch();
     }
 
@@ -310,7 +320,8 @@ NTSTATUS getAllSystemHandlers(_Out_ void* out)
         handleInfoEx,
         handleInfoSizeEx,
         NULL
-    )) == STATUS_INFO_LENGTH_MISMATCH) {
+    )) == STATUS_INFO_LENGTH_MISMATCH) 
+    {
         handleInfoEx = (PSYSTEM_HANDLE_INFORMATION_EX)realloc(handleInfoEx, handleInfoSizeEx *= 2);
         if (handleInfoEx == NULL)
             break;
@@ -329,14 +340,15 @@ NTSTATUS getAllSystemHandlers(_Out_ void* out)
     return status;
 }
 
-size_t IhCount(_In_ PSYSTEM_HANDLE_INFORMATION_EX systemHandlesList) {
+size_t IhCount(_In_ PSYSTEM_HANDLE_INFORMATION_EX systemHandlesList) 
+{
     size_t count = 0;
-
 
     for (int i = 0; i < systemHandlesList->NumberOfHandles; i++)
     {
         PSYSTEM_HANDLE_TABLE_ENTRY_INFO_EX handleInfo = &systemHandlesList->Handles[i];
-        if (handleInfo->HandleAttributes & (HANDLE_INHERIT)) {
+        if (handleInfo->HandleAttributes & (HANDLE_INHERIT)) 
+        {
             count++;
         }
     }
@@ -344,8 +356,7 @@ size_t IhCount(_In_ PSYSTEM_HANDLE_INFORMATION_EX systemHandlesList) {
     return count;
 }
 
-NTSTATUS GetThreadBasicInformation(_In_ HANDLE ThreadHandle,
-    _Out_ PTHREAD_BASIC_INFORMATION BasicInformation)
+NTSTATUS GetThreadBasicInformation(_In_ HANDLE ThreadHandle, _Out_ PTHREAD_BASIC_INFORMATION BasicInformation)
 {
     return NtQueryInformationThread(
         ThreadHandle,
@@ -356,8 +367,7 @@ NTSTATUS GetThreadBasicInformation(_In_ HANDLE ThreadHandle,
     );
 }
 
-NTSTATUS GetProcessBasicInformation(_In_ HANDLE ProcessHandle,
-    _Out_ PPROCESS_BASIC_INFORMATION BasicInformation)
+NTSTATUS GetProcessBasicInformation(_In_ HANDLE ProcessHandle, _Out_ PPROCESS_BASIC_INFORMATION BasicInformation)
 {
     return NtQueryInformationProcess(
         ProcessHandle,
@@ -368,18 +378,22 @@ NTSTATUS GetProcessBasicInformation(_In_ HANDLE ProcessHandle,
     );
 }
 
-HRESULT custom_strcpy_s(LPTSTR dest, int destSize, const PWSTR src) {
-    if (dest == nullptr || src == nullptr) {
+HRESULT custom_strcpy_s(LPTSTR dest, int destSize, const PWSTR src) 
+{
+    if (dest == nullptr || src == nullptr)
+    {
         return E_INVALIDARG;
     }
 
     int srcLength = lstrlenW(src);
 
-    if (srcLength >= destSize) {
+    if (srcLength >= destSize) 
+    {
         return STRSAFE_E_INSUFFICIENT_BUFFER;
     }
 
-    for (int i = 0; i <= srcLength; ++i) {
+    for (int i = 0; i <= srcLength; ++i) 
+    {
         dest[i] = src[i];
     }
 
@@ -387,11 +401,7 @@ HRESULT custom_strcpy_s(LPTSTR dest, int destSize, const PWSTR src) {
 }
 
 
-BOOL FormatObjectName(_In_ HANDLE DupHandle,
-    _In_ LPTSTR TypeName,
-    _In_ ULONG GrantedAccess,
-    _Out_ LPTSTR* FormatedObjectName,
-    _Out_ ULONG_PTR* RemoteProcessId)
+BOOL FormatObjectName(_In_ HANDLE DupHandle, _In_ LPTSTR TypeName, _In_ ULONG GrantedAccess, _Out_ LPTSTR* FormatedObjectName, _Out_ ULONG_PTR* RemoteProcessId)
 {
     PVOID objectNameInfo;
     UNICODE_STRING objectName;
@@ -495,9 +505,6 @@ BOOL SetHandleStrings(_Out_ LHF_PHANDLE_DESCRIPTION lhfHhandle) {
     HANDLE dupHandle = NULL;
     POBJECT_TYPE_INFORMATION objectTypeInfo;
 
-
-
-    // Setting default Handle type name
     lhfHhandle->TypeString = new TCHAR[PTR_STR_LEN];
     _tcscpy_s(lhfHhandle->TypeString, PTR_STR_LEN, _T(""));
 
@@ -544,12 +551,6 @@ BOOL SetHandleStrings(_Out_ LHF_PHANDLE_DESCRIPTION lhfHhandle) {
     }
 
     // Setting Handle type name
-    /*
-    _tcscpy_s(lhfHhandle->TypeString,
-        PTR_STR_LEN,
-        objectTypeInfo->Name.Buffer);
-        */
-    //using strcpy_s instead of _tcscpy_s
     custom_strcpy_s(lhfHhandle->TypeString,
         		PTR_STR_LEN,
         		objectTypeInfo->Name.Buffer);
@@ -568,9 +569,7 @@ BOOL SetHandleStrings(_Out_ LHF_PHANDLE_DESCRIPTION lhfHhandle) {
     return TRUE;
 }
 
-BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
-    _Out_ IntegrityLevel* integrityCode,
-    _Out_ LPTSTR* integrityStr) {
+BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId, _Out_ IntegrityLevel* integrityCode, _Out_ LPTSTR* integrityStr) {
     HANDLE hToken = NULL;
     DWORD tokenInfoLength = 0;
     LPTSTR fileNameBuffer = new TCHAR[MAX_PATH];
@@ -584,30 +583,33 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
     SetLastError(NULL);
     HANDLE processHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, UniqueProcessId);
 
-    if (processHandle == NULL) {
+    if (processHandle == NULL)
+    {
         delete[] fileNameBuffer;
         return FALSE;
     }
 
     //Get process image name
-    if (!GetModuleFileNameEx((HMODULE)processHandle, NULL, fileNameBuffer, MAX_PATH)) {
+    if (!GetModuleFileNameEx((HMODULE)processHandle, NULL, fileNameBuffer, MAX_PATH))
+    {
         _tcscpy_s(pathFileName, MAX_PATH, _T(""));
     }
     else
         pathFileName = PathFindFileName(pathFileName);
+
     lstrcat(*integrityStr, pathFileName);
 
     bool getToken = OpenProcessToken(processHandle, TOKEN_QUERY, &hToken);
 
-    if (getToken == 0) {
+    if (getToken == 0) 
+    {
         delete[] fileNameBuffer;
         CloseHandle(processHandle);
         return FALSE;
     }
 
-    if (GetTokenInformation(hToken, TokenIntegrityLevel,
-        NULL, 0, &tokenInfoLength) ||
-        ::GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+    if (GetTokenInformation(hToken, TokenIntegrityLevel, NULL, 0, &tokenInfoLength) || ::GetLastError() != ERROR_INSUFFICIENT_BUFFER) 
+    {
         CloseHandle(processHandle);
         CloseHandle(hToken);
         delete[] fileNameBuffer;
@@ -616,8 +618,7 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
 
     TOKEN_MANDATORY_LABEL* tokenLabel = (TOKEN_MANDATORY_LABEL*)malloc(tokenInfoLength);
 
-    if (!GetTokenInformation(hToken, TokenIntegrityLevel,
-        tokenLabel, tokenInfoLength, &tokenInfoLength))
+    if (!GetTokenInformation(hToken, TokenIntegrityLevel, tokenLabel, tokenInfoLength, &tokenInfoLength))
     {
         CloseHandle(processHandle);
         CloseHandle(hToken);
@@ -626,21 +627,22 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
         return FALSE;
     }
 
-    DWORD integrityLevel = *GetSidSubAuthority(tokenLabel->Label.Sid,
-        (DWORD)(UCHAR)(*GetSidSubAuthorityCount(tokenLabel->Label.Sid) - 1));
+    DWORD integrityLevel = *GetSidSubAuthority(tokenLabel->Label.Sid, (DWORD)(UCHAR)(*GetSidSubAuthorityCount(tokenLabel->Label.Sid) - 1));
 
     CloseHandle(processHandle);
     CloseHandle(hToken);
     free(tokenLabel);
 
-    if (integrityLevel < SECURITY_MANDATORY_LOW_RID) {
+    if (integrityLevel < SECURITY_MANDATORY_LOW_RID) 
+    {
         _tcscpy_s(*integrityStr, PTR_STR_LEN + MAX_PATH, _T("UNTRUSTED_INTEGRITY "));
         *integrityCode = UNTRUSTED_INTEGRITY;
         lstrcat(*integrityStr, pathFileName);
         delete[] fileNameBuffer;
         return TRUE;
     }
-    if (integrityLevel < SECURITY_MANDATORY_MEDIUM_RID) {
+    if (integrityLevel < SECURITY_MANDATORY_MEDIUM_RID)
+    {
         _tcscpy_s(*integrityStr, PTR_STR_LEN + MAX_PATH, _T("LOW_INTEGRITY "));
         *integrityCode = LOW_INTEGRITY;
         lstrcat(*integrityStr, pathFileName);
@@ -648,8 +650,8 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
         return TRUE;
     }
 
-    if (integrityLevel >= SECURITY_MANDATORY_MEDIUM_RID &&
-        integrityLevel < SECURITY_MANDATORY_HIGH_RID) {
+    if (integrityLevel >= SECURITY_MANDATORY_MEDIUM_RID && integrityLevel < SECURITY_MANDATORY_HIGH_RID)
+    {
         _tcscpy_s(*integrityStr, PTR_STR_LEN + MAX_PATH, _T("MEDIUM_INTEGRITY "));
         *integrityCode = MEDIUM_INTEGRITY;
         lstrcat(*integrityStr, pathFileName);
@@ -657,7 +659,8 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
         return TRUE;
     }
 
-    if (integrityLevel < SECURITY_MANDATORY_SYSTEM_RID) {
+    if (integrityLevel < SECURITY_MANDATORY_SYSTEM_RID) 
+    {
         _tcscpy_s(*integrityStr, PTR_STR_LEN + MAX_PATH, _T("HIGH_INTEGRITY "));
         *integrityCode = HIGH_INTEGRITY;
         lstrcat(*integrityStr, pathFileName);
@@ -665,7 +668,8 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
         return TRUE;
     }
 
-    if (integrityLevel < SECURITY_MANDATORY_PROTECTED_PROCESS_RID) {
+    if (integrityLevel < SECURITY_MANDATORY_PROTECTED_PROCESS_RID) 
+    {
         _tcscpy_s(*integrityStr, PTR_STR_LEN + MAX_PATH, _T("SYSTEM_INTEGRITY "));
         *integrityCode = SYSTEM_INTEGRITY;
         lstrcat(*integrityStr, pathFileName);
@@ -673,7 +677,8 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
         return TRUE;
     }
 
-    if (integrityLevel >= SECURITY_MANDATORY_PROTECTED_PROCESS_RID) {
+    if (integrityLevel >= SECURITY_MANDATORY_PROTECTED_PROCESS_RID)
+    {
         _tcscpy_s(*integrityStr, PTR_STR_LEN + MAX_PATH, _T("PPL_INTEGRITY "));
         *integrityCode = PPL_INTEGRITY;
         lstrcat(*integrityStr, pathFileName);
@@ -685,8 +690,8 @@ BOOL GetPidIntegrity(_In_ ULONG_PTR UniqueProcessId,
     return FALSE;
 }
 
-BOOL GetParentPid(_In_ ULONG_PTR pid,
-    _Out_ PULONG_PTR ppid) {
+BOOL GetParentPid(_In_ ULONG_PTR pid, _Out_ PULONG_PTR ppid)
+{
     ULONG returnLength = 0;
     ULONG status = 0;
     ULONG ProcessInfoSizeEx = sizeof(PROCESS_BASIC_INFORMATION);
@@ -749,8 +754,8 @@ BOOL GetLhfHandles(void* in, _Out_ void* out) {
     for (int i = 0; i < systemHandlesList->NumberOfHandles; i++)
     {
         PSYSTEM_HANDLE_TABLE_ENTRY_INFO_EX handleInfo = &systemHandlesList->Handles[i];
-        if (handleInfo->HandleAttributes & (HANDLE_INHERIT)) {
-
+        if (handleInfo->HandleAttributes & (HANDLE_INHERIT)) 
+        {
             // Case Process Handle: this is the handle of remote process inherited, default none.
             (*lhfHandles)->Handles[handleIndex].RemoteProcessId = -1;
             (*lhfHandles)->Handles[handleIndex].UniqueProcessId = handleInfo->UniqueProcessId;
@@ -785,9 +790,11 @@ BOOL GetLhfHandles(void* in, _Out_ void* out) {
     return TRUE;
 }
 
-void LhfFree(_In_ LHF_PHANDLE_DESCRIPTION_LIST lhfHandles) {
+void LhfFree(_In_ LHF_PHANDLE_DESCRIPTION_LIST lhfHandles) 
+{
 
-    if (lhfHandles == NULL) {
+    if (lhfHandles == NULL) 
+    {
         return;
     }
     for (unsigned int i = 0; i < lhfHandles->NumberOfLhfHandles; i++)
@@ -808,28 +815,32 @@ std::string getWindowsUsername()
     char username_buffer[UNLEN + 1];
     DWORD buffer_size = sizeof(username_buffer);
 
-    if (GetUserName(username_buffer, &buffer_size)) {
+    if (GetUserName(username_buffer, &buffer_size)) 
+    {
         return std::string(username_buffer);
     }
-    else {
+    else 
+    {
         return "";
     }
 }
 
 const std::string windowsUsername = getWindowsUsername();
 const std::string robloxPath = "C:\\Users\\" + windowsUsername + "\\AppData\\Local\\Roblox\\logs\\";
-std::vector<std::string> Functions::getLogFiles()
+std::vector<std::string> Native::GetLogFiles()
 {
     std::vector<std::string> logFiles;
     PSYSTEM_HANDLE_INFORMATION_EX systemHandlesList;
     LHF_PHANDLE_DESCRIPTION_LIST lhfHandles = NULL;
 
-    if (!NT_SUCCESS(getAllSystemHandlers(&systemHandlesList))) {
+    if (!NT_SUCCESS(getAllSystemHandlers(&systemHandlesList))) 
+    {
         _tprintf(_T("   [-] GetAllSystemHandlers failed!\n"));
         exit(1);
     }
 
-    if (!GetLhfHandles(systemHandlesList, &lhfHandles)) {
+    if (!GetLhfHandles(systemHandlesList, &lhfHandles)) 
+    {
         _tprintf(_T("   [-] GetLhfHandles failed!\n"));
         exit(1);
     }
@@ -851,7 +862,6 @@ std::vector<std::string> Functions::getLogFiles()
             std::string str(lhfHandles->Handles[i].Name);
             std::smatch match;
             if (std::regex_search(str, match, re)) {
-                //logFiles.push_back("C:" + match[1].str());
                 logFiles.push_back(robloxPath + match[1].str());
             }
         }

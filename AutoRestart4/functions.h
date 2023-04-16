@@ -14,26 +14,30 @@
 #include <filesystem>
 
 
-#pragma comment(lib, "Rstrtmgr.lib")
+namespace FS
+{
+	std::string SearchFileForPattern(const std::string& filePath, const std::string& pattern);
+	std::string SearchStringForPattern(const std::string& str, const std::string& pattern);
+	std::string ReadEntireFile(const std::string& filePath);
+	std::string ExtractExeName(const std::string& path);
+	std::string GetCurrentTimestamp();
+	std::string GetRobloxPath();
+}
 
-namespace Functions
+namespace Native
 {
 	DWORD GetProcessIDOfFileOpener(const std::string& path);
 
+	bool CheckProcessExists(DWORD pid, const std::string& processName);
 	bool TerminateProcessesByName(const std::string& processName);
-	bool IsProcessRunning(const std::string& processName);
-	bool checkProcessExists(DWORD pid, const std::string& processName);
-
-	std::string readEntireFile(const std::string& filePath);
-	std::string searchStringForPattern(const std::string& str, const std::string& pattern);
-	std::string extractExeName(const std::string& path);
-	std::string getRobloxPath();
-	std::string getCurrentTimestamp();
 	bool TerminateProcessTree(DWORD dwProcessId, UINT uExitCode);
-	void flushConsole();
+	bool IsProcessRunning(const std::string& processName);
+
+	std::vector<std::string> GetLogFiles();
+}
+
+namespace Terminal
+{
+	void FlushConsole();
 	void wait();
-
-	std::vector<std::string> getLogFiles();
-
-	std::string searchFileForPattern(const std::string& filePath, const std::string& pattern);
 }

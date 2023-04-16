@@ -1,60 +1,71 @@
 #pragma once
-#include <chrono>
 #include <condition_variable>
-#include <ctime>
+#include <iostream>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
-#include <mutex>
-#include <queue>
 #include <sstream>
+#include <chrono>
 #include <string>
 #include <thread>
+#include <ctime>
+#include <mutex>
+#include <queue>
 
 enum LogLevel { DEBUG, INFO, WARNING, ERR };
 
-class Logger {
+class Logger 
+{
 public:
-    Logger() {
+    Logger() 
+    {
         loggingThread = std::thread(&Logger::logThread, this);
     }
 
-    Logger(const std::string& filePath) : Logger() {
+    Logger(const std::string& filePath) : Logger() 
+    {
         setLogFile(filePath);
     }
 
-    ~Logger() {
+    ~Logger() 
+    {
         {
             std::lock_guard<std::mutex> lock(queueMutex);
             exitFlag = true;
             condition.notify_one();
         }
         loggingThread.join();
-        if (logFile.is_open()) {
+        if (logFile.is_open()) 
+        {
             logFile.close();
         }
     }
 
-    void setLogFile(const std::string& filePath) {
+    void setLogFile(const std::string& filePath) 
+    {
         std::scoped_lock lock(fileMutex);
-        if (logFile.is_open()) {
+        if (logFile.is_open()) 
+        {
             logFile.close();
         }
         logFile.open(filePath, std::ofstream::out | std::ofstream::app);
-        if (!logFile) {
+        if (!logFile) 
+        {
             throw std::runtime_error("Could not open log file.");
         }
     }
 
-    void dropLogFile() {
+    void dropLogFile() 
+    {
         std::scoped_lock lock(fileMutex);
-        if (logFile.is_open()) {
+        if (logFile.is_open()) 
+        {
             logFile.close();
             logFile.clear();
         }
     }
 
-    void log(const std::string& message, LogLevel level = INFO, const std::string& prefix = "", bool logToFile = false) {
+    void log(const std::string& message, LogLevel level = INFO, const std::string& prefix = "", bool logToFile = false) 
+    {
         std::scoped_lock lock(queueMutex);
         logQueue.push({ message, level, prefix, logToFile });
         condition.notify_one();
@@ -74,12 +85,15 @@ private:
     mutable std::mutex queueMutex;
     bool exitFlag = false;
 
-    void logThread() {
-        while (true) {
+    void logThread() 
+    {
+        while (true) 
+        {
             std::unique_lock<std::mutex> lock(queueMutex);
             condition.wait(lock, [this] { return !logQueue.empty() || exitFlag; });
 
-            if (exitFlag && logQueue.empty()) {
+            if (exitFlag && logQueue.empty()) 
+            {
                 break;
             }
 
@@ -95,7 +109,8 @@ private:
             timestamp << std::put_time(std::localtime(&now_time_t), "%Y-%m-%d %H:%M:%S") << '.' << std::setfill('0') << std::setw(3) << now_ms.count();
 
             std::string levelStr;
-            switch (level) {
+            switch (level) 
+            {
             case DEBUG:
                 levelStr = "DEBUG";
                 break;
@@ -114,9 +129,11 @@ private:
 
             std::cout << logLine << std::endl;
 
-            if (logToFile) {
+            if (logToFile) 
+            {
                 std::scoped_lock fileLock(fileMutex);
-                if (logFile.is_open()) {
+                if (logFile.is_open()) 
+                {
                     logFile << logLine << std::endl;
                     logFile.flush();
                 }

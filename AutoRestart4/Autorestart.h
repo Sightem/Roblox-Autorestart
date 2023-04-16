@@ -1,9 +1,9 @@
 #pragma once
-#include "Manager.h"
-#include "logger.hpp"
-#include "json.hpp"
-#include "timer.hpp"
 #include "taskqueue.hpp"
+#include "logger.hpp"
+#include "Manager.h"
+#include "timer.hpp"
+#include "json.hpp"
 
 #include <Windows.h>
 #include <atomic>
@@ -24,22 +24,22 @@ public:
 
 	~Autorestart() = default;
 
-	void init();
-    void unlockRoblox();
-    bool handleProblematicManagers(const std::vector<size_t>& problematic_managers);
-    void enqueueMessages();
-    void scheduler();
-    void createLogsDirectoryIfNeeded();
-    void updateCSRF();
+    bool HandleProblematicManagers(const std::vector<size_t>& problematic_managers);
+    void CreateLogsDirectoryIfNeeded();
+    void EnqueueMessages();
+    void UnlockRoblox();
+    void UpdateCSRF();
+    void Scheduler();
+	void Init();
 
-    bool cookiesExists();
-	bool readCookies();
-	bool validateCookies();
+    bool CookiesExists();
+	bool ReadCookies();
+	bool ValidateCookies();
 
-	std::string ensureLogfile();
-    std::string generateLogfilePath();
+	std::string EnsureLogfile();
+    std::string GenerateLogFilePath();
 
-    std::vector<size_t> checkManagersForProblems();
+    std::vector<size_t> CheckManagersForProblems();
 
 private:
     std::chrono::steady_clock::time_point last_csrf_update;
@@ -51,8 +51,8 @@ private:
     std::vector<Manager> managers;
 
 	nlohmann::json* config;
-    Timer timer;
     Logger logger;
+    Timer timer;
     
     volatile bool terminate_scheduler;
     bool restart_broken_only;

@@ -26,7 +26,8 @@ struct Message
     Message(MessageType type, std::variant<std::string, std::chrono::milliseconds, bool> data, int priority = 0)
         : type(type), data(data), priority(priority) {}
 
-    bool operator<(const Message& other) const {
+    bool operator<(const Message& other) const 
+    {
         return priority < other.priority;
     }
 };
@@ -37,16 +38,19 @@ public:
     ThreadSafeQueue() = default;
     ~ThreadSafeQueue() = default;
 
-    void push(const T& value) {
+    void push(const T& value)
+    {
         std::unique_lock<std::mutex> lock(mutex_);
         queue_.push(value);
         lock.unlock();
         cond_var_.notify_one();
     }
 
-    bool try_pop(T& value) {
+    bool try_pop(T& value) 
+    {
         std::unique_lock<std::mutex> lock(mutex_);
-        if (queue_.empty()) {
+        if (queue_.empty()) 
+        {
             return false;
         }
         value = std::move(queue_.top());
@@ -54,29 +58,35 @@ public:
         return true;
     }
 
-    void wait_and_pop(T& value) {
+    void wait_and_pop(T& value) 
+    {
         std::unique_lock<std::mutex> lock(mutex_);
         cond_var_.wait(lock, [this]() { return !queue_.empty(); });
         value = std::move(queue_.top());
         queue_.pop();
     }
 
-    bool empty() const {
+    bool empty() const 
+    {
         std::unique_lock<std::mutex> lock(mutex_);
         return queue_.empty();
     }
 
-    T top() {
+    T top() 
+    {
         std::unique_lock<std::mutex> lock(mutex_);
-        if (queue_.empty()) {
+        if (queue_.empty()) 
+        {
             throw std::runtime_error("Queue is empty");
         }
         return queue_.top();
     }
 
-    void pop() {
+    void pop() 
+    {
         std::unique_lock<std::mutex> lock(mutex_);
-        if (!queue_.empty()) {
+        if (!queue_.empty()) 
+        {
             queue_.pop();
         }
     }

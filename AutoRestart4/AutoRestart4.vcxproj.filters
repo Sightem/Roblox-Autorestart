@@ -18,10 +18,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Autorestart.cpp">
+    <ClCompile Include="autorestart.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Manager.cpp">
+    <ClCompile Include="manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="functions.cpp">
@@ -38,10 +38,10 @@
     <ClInclude Include="logger.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Autorestart.h">
+    <ClInclude Include="autorestart.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Manager.h">
+    <ClInclude Include="manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="timer.hpp">
@@ -53,10 +53,10 @@
     <ClInclude Include="functions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Native.h">
+    <ClInclude Include="native.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Lhf.h">
+    <ClInclude Include="lhf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
