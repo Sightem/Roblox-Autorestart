@@ -53,10 +53,9 @@ public:
         return *this;
     }
     
-    static void setJobIDString(const std::string& value);
+    static void SetJobIDString(const std::string& value);
     void HandleMessage(Message& message);
     void LaunchRoblox();
-    void GetVIPServerInfo();
     void Init();
 
     bool TerminateRoblox();
@@ -80,9 +79,6 @@ private:
     static std::string job_id;
     static std::mutex shared_string_mutex;
     std::mutex regex_mutex;
-
-    //vip server stuff
-    std::string link_code; 
     
     Logger* logger;
     const void* autorestart_ptr;

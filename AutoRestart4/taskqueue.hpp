@@ -33,22 +33,22 @@ struct Message
 };
 
 template<typename T>
-class ThreadSafeQueue {
+class ThreadSafeQueue 
+{
 public:
     ThreadSafeQueue() = default;
     ~ThreadSafeQueue() = default;
 
     void push(const T& value)
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::scoped_lock lock(mutex_);
         queue_.push(value);
-        lock.unlock();
         cond_var_.notify_one();
     }
 
     bool try_pop(T& value) 
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::scoped_lock lock(mutex_);
         if (queue_.empty()) 
         {
             return false;
@@ -60,7 +60,7 @@ public:
 
     void wait_and_pop(T& value) 
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::scoped_lock lock(mutex_);
         cond_var_.wait(lock, [this]() { return !queue_.empty(); });
         value = std::move(queue_.top());
         queue_.pop();
@@ -68,13 +68,13 @@ public:
 
     bool empty() const 
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::scoped_lock lock(mutex_);
         return queue_.empty();
     }
 
     T top() 
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::scoped_lock lock(mutex_);
         if (queue_.empty()) 
         {
             throw std::runtime_error("Queue is empty");
@@ -84,7 +84,7 @@ public:
 
     void pop() 
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::scoped_lock lock(mutex_);
         if (!queue_.empty()) 
         {
             queue_.pop();

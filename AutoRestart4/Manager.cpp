@@ -20,7 +20,7 @@ std::string Manager::GetJobIDString()
     return value;
 }
 
-void Manager::setJobIDString(const std::string& value)
+void Manager::SetJobIDString(const std::string& value)
 {
     std::scoped_lock<std::mutex> lock(shared_string_mutex);
     job_id = value;
@@ -55,7 +55,6 @@ std::string Manager::GetUsername()
 
     nlohmann::json response = nlohmann::json::parse(res.data, nullptr, false);
 
-    //return response["name"];
     if (response.is_discarded())
     {
 		return "";
@@ -122,17 +121,6 @@ std::set<DWORD> Manager::GetRobloxInstances()
     CloseHandle(snapshot);
 
     return pidSet;
-}
-
-void Manager::GetVIPServerInfo()
-{
-    const Autorestart* restart = static_cast<const Autorestart*>(autorestart_ptr);
-
-    std::string url = restart->config->at("vip").at("url");
-
-    this->link_code = url.substr(url.find("=") + 1);
-
-    return;
 }
 
 std::string Manager::GetCSRF()
@@ -214,11 +202,6 @@ void Manager::Init()
 		Init();
 	}
 
-    if (restart->launch_vip)
-    {
-        GetVIPServerInfo();
-    }
-
     LaunchRoblox();
 }
 
@@ -249,7 +232,7 @@ void Manager::LaunchRoblox()
 
     if (restart->launch_vip)
     {
-        cmd = '"' + restart->roblox_exe_path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + std::to_string(restart->place_id) + "%26linkCode%3D" + link_code + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
+        cmd = '"' + restart->roblox_exe_path + '"' + " roblox-player:1+launchmode:play+gameinfo:" + authticket + "+launchtime" + ':' + unixtime + "+placelauncherurl:" + "https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestPrivateGame%26browserTrackerId%3D" + browserTrackerID + "%26placeId%3D" + std::to_string(restart->place_id) + "%26linkCode%3D" + restart->link_code + "+browsertrackerid:" + browserTrackerID + "+robloxLocale:en_us+gameLocale:en_us+channel:";
     }
     else if (restart->launch_sameserver)
     {

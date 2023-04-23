@@ -57,6 +57,9 @@ private:
     volatile bool terminate_scheduler;
     bool restart_broken_only;
     bool timer_enabled;
+    bool patterns_empty;
+
+    int time;
 
     std::thread scheduler_thread;
     
@@ -64,6 +67,7 @@ private:
     friend class Manager;
     std::vector<std::string> patterns;
     std::string roblox_exe_path;
+    std::string link_code;
     
     int64_t place_id;
     bool launch_vip = false;

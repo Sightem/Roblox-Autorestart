@@ -34,7 +34,7 @@ bool Autorestart::ValidateCookies()
 
 	const std::regex pattern(R"(_\|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.\|_)");
 	bool allCookiesValid = true;
-	for (auto& cookie : cookies)
+	for (const auto& cookie : cookies)
 	{
 		auto cookieIter = std::find(cookies.begin(), cookies.end(), cookie);
 		long long index = std::distance(cookies.begin(), cookieIter);
@@ -96,7 +96,7 @@ void Autorestart::CreateLogsDirectoryIfNeeded()
 
 std::string Autorestart::GenerateLogFilePath()
 {
-	std::string fileName = "Autorestart-log";
+	const std::string fileName = "Autorestart-log";
 	const std::string fileExtension = ".txt";
 	std::string timestamp = FS::GetCurrentTimestamp();
 	std::string path = "logs/" + fileName + "-" + timestamp + fileExtension;
@@ -139,7 +139,7 @@ bool Autorestart::HandleProblematicManagers(const std::vector<size_t>& problemat
 		if (restart_broken_only)
 		{
 			logger.log(std::to_string(problematic_managers.size()) + " instances were broken, restarting the instances", INFO, "SCHEDULER", true);
-			manager.setJobIDString("");
+			manager.SetJobIDString("");
 			manager.TerminateRoblox();
 			manager.LaunchRoblox();
 		}
@@ -175,7 +175,10 @@ std::vector<size_t> Autorestart::CheckManagersForProblems()
 void Autorestart::EnqueueMessages()
 {
 	this->message_queue.push(Message(MessageType::CHECK_ROBLOX, "", 1));
-	this->message_queue.push(Message(MessageType::CHECK_ERROR, "", 1));
+
+	if (!patterns_empty)
+		this->message_queue.push(Message(MessageType::CHECK_ERROR, "", 1));
+
 	this->message_queue.push(Message(MessageType::CHECK_SYNAPSE, "", 1));
 }
 
@@ -251,6 +254,15 @@ void Autorestart::Init()
 		launch_sameserver = config->at("SameServer");
 		roblox_exe_path = FS::GetRobloxPath();
 		patterns = config->at("ErrorPatterns");
+		patterns_empty = patterns.empty();
+		time = config->at("Timer").at("Time");
+
+		if (launch_vip)
+		{
+			std::string url = config->at("vip").at("url");
+
+			this->link_code = url.substr(url.find("=") + 1);
+		}
 	}
 
 	//-- Read cookies
@@ -313,7 +325,7 @@ void Autorestart::Init()
 			terminate_scheduler = false;
 			scheduler_thread = std::thread(&Autorestart::Scheduler, this);
 
-			timer.setRestartTimer(config->at("Timer").at("Time").get<int>());
+			timer.SetRestartTimer(time);
 			timer.run();
 		}
 		else

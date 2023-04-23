@@ -13,7 +13,6 @@
 #include <sstream>
 #include <filesystem>
 
-
 namespace FS
 {
 	std::string SearchFileForPattern(const std::string& filePath, const std::string& pattern);

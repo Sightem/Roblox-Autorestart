@@ -17,7 +17,7 @@ public:
 
     Timer(int time) : restartTime(time) {}
 
-    void setRestartTimer(int newTime)
+    void SetRestartTimer(int newTime)
     {
         restartTime.store(newTime, std::memory_order_relaxed);
     }
